@@ -1,0 +1,40 @@
+<div class="h-screen bg-gray-800 text-white transition-all duration-300 shadow-lg fixed top-0 left-0" [ngClass]="collapsed ? 'w-16' : 'w-64'">
+    <!-- Logo container -->
+    <div class="flex items-center justify-between p-4 border-b border-gray-700">
+        <!-- Logo T (visible solo cuando está colapsado) -->
+        <button *ngIf="collapsed" class="flex items-center justify-center w-8 h-8 text-gray-800 font-bold rounded" (click)="toggleCollapse()">
+            <img src="TEDEXIS T.png" alt="Logo" class="w-9 h-9 object-contain" />
+        </button>
+   
+        <!-- Logo TEDEXIS completo (visible solo cuando no está colapsado y con funcionalidad de toggle) -->
+        <div *ngIf="!collapsed" class="flex-1 cursor-pointer" (click)="toggleCollapse()">
+            <img src="https://www.tedexis.com/wp-content/uploads/2024/06/logo-tipografia-tedexis2-.png"
+                 alt="TEDEXIS Logo"
+                 class="h-9 object-contain" />
+        </div>
+   
+        <!-- Botón de cerrar sidebar (colapsa el sidebar) -->
+        <button class="text-gray-400 hover:text-white" *ngIf="!collapsed" (click)="toggleCollapse()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+   
+    <!-- Navigation menu -->
+    <div class="mt-2">
+        <ul>
+            <li class="relative" *ngFor="let data of navData">
+                <a
+                    class="flex items-center py-3 px-4 hover:bg-gray-700 transition-colors duration-150 cursor-pointer"
+                    [routerLink]="[data.routeLink]"
+                    routerLinkActive="bg-gray-700 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-blue-500"
+                    [routerLinkActiveOptions]="{ exact: true }"
+                >
+                    <img [src]="data.icon" alt="{{ data.label }} icon" class="w-7 h-7 object-contain" [ngStyle]="{'filter': 'brightness(0) saturate(100%) invert(56%) sepia(83%) saturate(1795%) hue-rotate(180deg) brightness(92%) contrast(88%)'}">
+                    <span class="ml-4 text-m font-semibold" *ngIf="!collapsed">{{data.label}}</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

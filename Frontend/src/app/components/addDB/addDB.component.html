@@ -1,0 +1,98 @@
+<div class="max-w-4xl mx-auto p-6 bg-white">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-semibold text-gray-900 mb-2">Añadir Base de Datos</h1>
+        <p class="text-gray-600">Configura los parámetros de tu base de datos</p>
+    </div>
+
+    <form class="space-y-8" (ngSubmit)="onSubmit($event)">
+
+    <div class="bg-gray-50 rounded-lg p-6">
+        <h2 class="text-xl font-medium text-gray-900 mb-2">Base de Datos</h2>
+        <p class="text-gray-600 mb-6">Ingrese los parámetros necesarios para registrar una nueva base de datos</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nombre de la base de datos
+                </label>
+                <input type="text" id="nombre" name="nombre" [(ngModel)]="name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="BDD2024" required>
+            </div>
+
+            <div>
+                <label for="host" class="block text-sm font-medium text-gray-700 mb-2">
+                    Host
+                </label>
+                <input type="text" id="host" name="host" [(ngModel)]="host"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="localhost" required>
+            </div>
+
+            <div>
+                <label for="puerto" class="block text-sm font-medium text-gray-700 mb-2">
+                    Puerto de Enlace
+                </label>
+                <input type="text" id="puerto" name="puerto" [(ngModel)]="port"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="5432" required>
+            </div>
+
+            <div>
+                <label for="usuario" class="block text-sm font-medium text-gray-700 mb-2">
+                    Usuario
+                </label>
+                <input type="text" id="usuario" name="usuario" [(ngModel)]="user"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="admin" required>
+            </div>
+
+            <div>
+                <label for="contraseña" class="block text-sm font-medium text-gray-700 mb-2">
+                    Contraseña
+                </label>
+                <input type="password" id="contraseña" name="contraseña" [(ngModel)]="password"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="*****" required>
+            </div>
+
+            <div>
+                <label for="bd_user" class="block text-sm font-medium text-gray-700 mb-2">
+                    BD_USER
+                </label>
+                <input type="text" id="bd_user" name="bd_user" [(ngModel)]="bd_user"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="admin_user" required>
+            </div>
+
+            <div>
+                <label for="bd_mensaje" class="block text-sm font-medium text-gray-700 mb-2">
+                    BD_MENSAJE
+                </label>
+                <input type="text" id="bd_mensaje" name="bd_mensaje" [(ngModel)]="bd_mensaje"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="mensajes_db" required>
+            </div>
+
+            <div>
+                <label for="coleccion" class="block text-sm font-medium text-gray-700 mb-2">
+                    Colección
+                </label>
+                <input type="text" id="coleccion" name="coleccion" [(ngModel)]="collection"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Mensajes" required>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="flex justify-end">
+        <button type="submit"
+            class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition-colors">
+            Añadir Base de Datos
+        </button>
+    </div>
+</form>
+
+</div>

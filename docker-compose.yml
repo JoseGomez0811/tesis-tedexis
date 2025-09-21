@@ -1,0 +1,130 @@
+services:
+  # PHP-FPM (Laravel)
+  app:
+    build: 
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: tedexis_laravel_app
+    restart: unless-stopped
+    volumes:
+      - ./Backend:/var/www
+    networks:
+      - laravel
+      
+  # Frontend Angular
+  # Angular frontend
+  angular:
+    build:
+      context: ./Frontend   # 👈 corregido para usar mayúscula
+    container_name: tedexis_angular_app
+    restart: unless-stopped
+    command: ng serve --host 0.0.0.0 --port 4200
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./Frontend:/usr/src/app
+    networks:
+      - laravel
+
+
+
+  # Servidor web Nginx
+  # Nginx
+  nginx:
+    image: nginx:1.25
+    container_name: tedexis_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"   # 👈 Laravel accesible en http://localhost:8000
+    volumes:
+      - ./Backend:/var/www
+      - ./nginx/conf.d/app.config:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: tedexis_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: db_tedexis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: jg081101
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - laravel
+    ports:
+      - "5433:5432"
+
+  # Base de datos MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: tedexis_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-app}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - laravel
+
+  # Redis para cache y colas
+  redis:
+    image: redis:7-alpine
+    container_name: tedexis_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - laravel
+
+  # pgAdmin para PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tedexis_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    networks:
+      - laravel
+    depends_on:
+      - postgres
+
+  # Mongo Express para MongoDB
+  mongo-express:
+    image: mongo-express:latest
+    container_name: tedexis_mongo_express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_USERNAME:-root}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_PASSWORD:-secret}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USERNAME:-root}:${MONGO_PASSWORD:-secret}@mongodb:27017/
+    ports:
+      - "8081:8081"
+    networks:
+      - laravel
+    depends_on:
+      - mongodb
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  pgdata:
