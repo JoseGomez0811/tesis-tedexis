@@ -18,5 +18,10 @@ export const navbarData = [
         routeLink: 'nueva_base_de_datos',
         icon: 'https://www.svgrepo.com/show/382793/database-data-base-add.svg', // URL del icono
         label: 'Añadir Base de Datos'
+      },
+      {
+        routeLink: 'permisos',
+        icon: 'https://www.svgrepo.com/show/501673/permissions.svg', // URL del icono
+        label: 'Permisos'
       }
 ];

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class GoogleController extends Controller
 {
@@ -51,27 +51,39 @@ class GoogleController extends Controller
             // Validar dominio de email
             $emailDomain = substr(strrchr($googleUser->getEmail(), "@"), 1);
             $allowedDomains = ['tedexis.com', 'gmail.com', 'correo.unimet.edu.ve'];
-            
             if (!in_array($emailDomain, $allowedDomains)) {
                 Log::warning('Dominio no permitido', ['email' => $googleUser->getEmail(), 'domain' => $emailDomain]);
                 return redirect(config('app.frontend_url') . '/login?error=domain_not_allowed&domain=' . urlencode($emailDomain));
             }
 
-            // Crear o actualizar usuario
-            $user = User::updateOrCreate(
-                ['email' => $googleUser->getEmail()],
-                [
+
+            // Buscar usuario existente
+            $user = User::where('email', $googleUser->getEmail())->first();
+            $isSpecial = $googleUser->getEmail() === 'gomez.jose@correo.unimet.edu.ve';
+            if (!$user) {
+                // Primera vez: crear usuario
+                $user = User::create([
                     'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
                     'password' => bcrypt(Str::random(16)),
                     'google_id' => $googleUser->getId(),
                     'avatar' => $googleUser->getAvatar(),
                     'email_verified_at' => now(),
-                ]
-            );
+                    'authorization_status' => $isSpecial ? 'authorized' : 'pending',
+                ]);
+            } else if ($isSpecial && $user->authorization_status !== 'authorized') {
+                // Si ya existe y es el especial, actualizar a autorizado
+                $user->authorization_status = 'authorized';
+                $user->save();
+            }
 
+            // Si no está autorizado, notificar y no permitir acceso
+            if ($user->authorization_status !== 'authorized') {
+                return redirect(config('app.frontend_url') . '/login?status=pending');
+            }
+
+            // Usuario autorizado: login y redirigir
             Auth::login($user);
-
-            // Generar token Sanctum válido por 30 días
             $token = $user->createToken('google-login', ['*'], now()->addDays(30))->plainTextToken;
 
             Log::info('Token generado', [
@@ -84,15 +96,12 @@ class GoogleController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'google_id' => $user->google_id,
-                'email_verified_at' => $user->email_verified_at
+                'email_verified_at' => $user->email_verified_at,
+                'authorization_status' => $user->authorization_status
             ];
-
-            $redirectUrl = config('app.frontend_url') . '/app/perfil?token=' . urlencode($token) 
-                        . '&user=' . urlencode(json_encode($userData));
-
+            $redirectUrl = config('app.frontend_url') . '/app/perfil?token=' . urlencode($token)
+                . '&user=' . urlencode(json_encode($userData));
             return redirect($redirectUrl);
-
-
         } catch (\Exception $e) {
             Log::error('Error en callback de Google', [
                 'message' => $e->getMessage(),
@@ -102,6 +111,121 @@ class GoogleController extends Controller
             return redirect(
                 config('app.frontend_url') . '/login?error=auth_failed&details=' . urlencode($e->getMessage())
             );
+        }
+    }
+
+    /**
+     * Obtiene lista de usuarios pendientes de autorización
+     */
+    public function getPendingUsers()
+    {
+        try {
+            $pendingUsers = User::pending()
+                ->select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $pendingUsers
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error obteniendo usuarios pendientes: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al obtener usuarios pendientes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtiene todos los usuarios con sus estados de autorización
+     */
+    public function getAllUsers()
+    {
+        try {
+            $users = User::select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $users
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error obteniendo todos los usuarios: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al obtener usuarios'
+            ], 500);
+        }
+    }
+
+    /**
+     * Autoriza un usuario
+     */
+    public function authorizeUser($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+            $user->authorize();
+
+            Log::info('Usuario autorizado', [
+                'user_id' => $userId,
+                'user_email' => $user->email,
+                'authorized_by' => Auth::user()?->email ?? 'system'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario autorizado exitosamente',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'authorization_status' => $user->authorization_status
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error autorizando usuario: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al autorizar usuario'
+            ], 500);
+        }
+    }
+
+    /**
+     * Rechaza un usuario
+     */
+    public function rejectUser($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+            $user->reject();
+
+            Log::info('Usuario rechazado', [
+                'user_id' => $userId,
+                'user_email' => $user->email,
+                'rejected_by' => Auth::user()?->email ?? 'system'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario rechazado exitosamente',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'authorization_status' => $user->authorization_status
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error rechazando usuario: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al rechazar usuario'
+            ], 500);
         }
     }
 }
