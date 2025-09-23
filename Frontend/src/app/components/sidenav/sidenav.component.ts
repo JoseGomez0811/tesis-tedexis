@@ -2,6 +2,7 @@ import { Component, Output, EventEmitter, OnInit, HostListener } from '@angular/
 import { navbarData } from './nav-data';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule, NgClass } from '@angular/common';
+import { AuthService } from '../../services/auth.service';
 
 interface SideNavToggle {
   screenWidth: number;
@@ -10,7 +11,7 @@ interface SideNavToggle {
 
 @Component({
   selector: 'app-sidenav',
-  imports: [RouterLink, NgClass, RouterLinkActive, CommonModule],
+  imports: [RouterLink, NgClass, RouterLinkActive, CommonModule ],
   templateUrl: './sidenav.component.html',
   styleUrl: './sidenav.component.css'
 })
@@ -19,6 +20,10 @@ export class SidenavComponent implements OnInit {
   collapsed = false;
   screenWidth = 0;
   navData = navbarData;
+
+  constructor(
+        private authService: AuthService,
+    ) {}
 
   @HostListener('window:resize', ['$event'])
   onResize(event: any) {
@@ -50,5 +55,9 @@ export class SidenavComponent implements OnInit {
   closeSidenav(): void {
     this.collapsed = true;
     this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }

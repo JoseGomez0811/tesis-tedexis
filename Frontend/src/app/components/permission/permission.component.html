@@ -1,0 +1,118 @@
+<div class="max-w-4xl mx-auto p-6 bg-white min-h-screen">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-semibold text-gray-900 mb-2">Permisos</h1>
+        <p class="text-gray-600">Administra los permisos de acceso de los usuarios</p>
+    </div>
+    
+    <form class="space-y-8">
+        <div class="bg-gray-50 rounded-lg p-6">
+            <h2 class="text-xl font-medium text-gray-900 mb-2">Conceder Permisos</h2>
+            <p class="text-gray-600 mb-6">Autorice o niego el acceso de los usuarios</p>
+            
+            <!-- Filtros -->
+            <div class="mb-6">
+                <div class="flex flex-wrap gap-2">
+                    <button 
+                        type="button"
+                        (click)="setFilter('all')"
+                        [class]="isActiveFilter('all') 
+                            ? 'px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white' 
+                            : 'px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                    >
+                        Todos
+                    </button>
+                    <button 
+                        type="button"
+                        (click)="setFilter('pending')"
+                        [class]="isActiveFilter('pending') 
+                            ? 'px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white' 
+                            : 'px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                    >
+                        Pendientes
+                    </button>
+                    <button 
+                        type="button"
+                        (click)="setFilter('authorized')"
+                        [class]="isActiveFilter('authorized') 
+                            ? 'px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white' 
+                            : 'px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                    >
+                        Autorizados
+                    </button>
+                    <button 
+                        type="button"
+                        (click)="setFilter('rejected')"
+                        [class]="isActiveFilter('rejected') 
+                            ? 'px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white' 
+                            : 'px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                    >
+                        Rechazados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista de Peticiones -->
+            <div class="space-y-4" *ngIf="hasFilteredUsers">
+                <div 
+                    *ngFor="let user of filteredUsers; trackBy: trackByUserId"
+                    class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-1">
+                                <h3 class="text-lg font-medium text-gray-900">{{ user.name }}</h3>
+                                <span [class]="getStatusBadgeClass(user.authorization_status)">
+                                    {{ getStatusText(user.authorization_status) }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-gray-600">{{ user.email }}</p>
+                        </div>
+                        
+                        <div class="flex gap-2 ml-4" *ngIf="user.authorization_status === 'pending'">
+                            <button 
+                                type="button"
+                                (click)="handleAccept(user.id)"
+                                [disabled]="loading"
+                                class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                            >
+                                <span *ngIf="!loading">Aceptar</span>
+                                <span *ngIf="loading">Procesando...</span>
+                            </button>
+                            <button 
+                                type="button"
+                                (click)="handleReject(user.id)"
+                                [disabled]="loading"
+                                class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                            >
+                                <span *ngIf="!loading">Rechazar</span>
+                                <span *ngIf="loading">Procesando...</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado vacío -->
+            <div class="text-center py-8" *ngIf="!hasFilteredUsers && !loading">
+                <div class="text-gray-400 text-lg mb-2">📋</div>
+                <p class="text-gray-500">No hay peticiones para mostrar</p>
+            </div>
+
+            <!-- Estado de carga -->
+            <div class="text-center py-8" *ngIf="loading">
+                <div class="text-gray-400 text-lg mb-2">⏳</div>
+                <p class="text-gray-500">Cargando...</p>
+            </div>
+        </div>
+    </form>
+
+    <!-- Notificación -->
+    <div 
+        *ngIf="showNotification"
+        [class]="'fixed top-4 right-4 text-white px-6 py-3 rounded-md shadow-lg z-50 transition-opacity duration-300 ' + 
+                (notificationType === 'success' ? 'bg-green-500' : 'bg-red-500')"
+    >
+        {{ notificationMessage }}
+    </div>
+</div>

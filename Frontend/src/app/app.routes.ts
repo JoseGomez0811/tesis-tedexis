@@ -6,6 +6,7 @@ import { TestingComponent } from './components/testing/testing.component';
 import { AddServerComponent } from './components/addServer/addServer.component';
 import { AddDBComponent } from './components/addDB/addDB.component';
 import { AuthSuccessComponent } from './components/auth-success/auth-success.component';
+import { PermissionComponent } from './components/permission/permission.component';
 
 export const routes: Routes = [
   // Redirigir la raíz al login
@@ -41,6 +42,10 @@ export const routes: Routes = [
       {
         path: 'nueva_base_de_datos',
         component: AddDBComponent
+      },
+      {
+        path: 'permisos',
+        component: PermissionComponent
       },
       {
         path: '',

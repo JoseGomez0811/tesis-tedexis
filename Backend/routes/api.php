@@ -27,3 +27,11 @@ Route::prefix('v1')->group(function () {
 Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
     return response()->json($request->user());
 });
+
+// Rutas para gestión de permisos de usuarios (API)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('admin/users/pending', [GoogleController::class, 'getPendingUsers']);
+    Route::get('admin/users/all', [GoogleController::class, 'getAllUsers']);
+    Route::post('admin/users/{userId}/authorize', [GoogleController::class, 'authorizeUser']);
+    Route::post('admin/users/{userId}/reject', [GoogleController::class, 'rejectUser']);
+});
