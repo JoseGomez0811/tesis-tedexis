@@ -19,7 +19,7 @@
                     <select
                         id="servidor"
                         name="servidor"
-                        [(ngModel)]="selectedServer"
+                        [(ngModel)]="selectedServer" (change)="onServerChange()"
                         class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                     >
                         <option value="">Seleccionar...</option>
@@ -39,15 +39,29 @@
                     <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
                         Tipo de conexión
                     </label>
-                    <select
-                        id="conexión"
-                        name="conexión"
-                        class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="">Seleccionar...</option>
-                        <option value="Servidor_1">SMPP</option>
-                        <option value="Servidor_2">MQ</option>
-                    </select>
+                        <select
+                            id="conexión"
+                            [(ngModel)]="selectedConnection"
+                            name="conexión"
+                            class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            (change)="onConnectionChange(); toggleFields($event)"
+                        >
+                            <option value="">Seleccionar...</option>
+                            <option *ngFor="let conn of filteredConnections" [value]="conn.name">{{ conn.name }}</option>
+                        </select>
+                    <div *ngIf="showQueueField" class="mt-4">
+                        <label for="nombreCola" class="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre cola
+                        </label>
+                        <input
+                            type="text"
+                            id="nombreCola"
+                            name="nombreCola"
+                            [(ngModel)]="nombreCola"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Nombre de la cola"
+                        >
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,6 +78,7 @@
                 <select
                     id="tipoSimulacion"
                     name="tipoSimulacion"
+                    [(ngModel)]="tipoSimulacion"
                     class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                     (change)="toggleFields($event)"
                 >
@@ -74,9 +89,35 @@
             </div>
 
             <!-- Campos para Nuevo -->
-            <div id="camposNuevo" [style.display]="showNuevoFields ? 'block' : 'none'">
+            <div id="camposNuevo" *ngIf="showCamposNuevo">
                 <h3 class="text-lg font-medium text-gray-800 mb-4">Configuración Nueva Simulación</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="id" class="block text-sm font-medium text-gray-700 mb-2">
+                            System ID
+                        </label>
+                        <input
+                            type="text"
+                            id="id"
+                            [(ngModel)]="systemId"
+                            name="id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="No sé que poner"
+                        >
+                    </div>
+                    <div *ngIf="showPasswordField">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            Contraseña
+                        </label>
+                        <input
+                            type="password"
+                            id="password"
+                            [(ngModel)]="password"
+                            name="password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="123456"
+                        >
+                    </div>
                     <div>
                         <label for="numeroTelefono" class="block text-sm font-medium text-gray-700 mb-2">
                             Número de teléfono
@@ -84,6 +125,7 @@
                         <input
                             type="text"
                             id="numeroTelefono"
+                            [(ngModel)]="numeroTelefono"
                             name="numeroTelefono"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="1856"
@@ -97,6 +139,7 @@
                         <input
                             type="text"
                             id="mensaje"
+                            [(ngModel)]="mensaje"
                             name="mensaje"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Prueba"
@@ -110,46 +153,101 @@
                         <input
                             type="number"
                             id="cantidad"
+                            [(ngModel)]="cantidad"
                             name="cantidad"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="100"
                         >
                     </div>
-                    
                     <div>
-                        <label for="id" class="block text-sm font-medium text-gray-700 mb-2">
-                            System ID
+                        <label for="sc" class="block text-sm font-medium text-gray-700 mb-2">
+                            Short Code
+                        </label>
+                        <input
+                            type="number"
+                            id="sc"
+                            [(ngModel)]="sc"
+                            name="sc"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0800"
+                        >
+                    </div>
+                    <div>
+                        <label for="encoding" class="block text-sm font-medium text-gray-700 mb-2">
+                            Encoding
                         </label>
                         <input
                             type="text"
-                            id="id"
-                            name="id"
+                            id="encoding"
+                            [(ngModel)]="encoding"
+                            name="encoding"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="No sé que poner"
+                            placeholder="ustedes sabrán"
                         >
                     </div>
                 </div>
             </div>
 
+            <!-- [style.display]="showReusoFields ? 'block' : 'none'" -->
             <!-- Campos para Reuso -->
-            <div id="camposReuso" [style.display]="showReusoFields ? 'block' : 'none'">
+             <!-- *ngIf="showCamposReuso" -->
+            <div id="camposReuso" [style.display]="showReusoFields ? 'block' : 'none'" *ngIf="showCamposReuso">
                 <h3 class="text-lg font-medium text-gray-800 mb-4">Reutilizar Mensajes Existente</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="bdd" class="block text-sm font-medium text-gray-700 mb-2">
                         Base de Datos
-                    </label>
-                    <select
-                        id="bdd"
-                        name="bdd"
-                        [(ngModel)]="selectedDB"
-                        class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="">Seleccionar...</option>
-                        <option *ngFor="let s of db" [value]="s.name">{{ s.name }}</option>
-                    </select>
+                        </label>
+                        <select
+                            id="bdd"
+                            name="bdd"
+                            [(ngModel)]="selectedDB"
+                            (change)="onDatabaseChange()"
+                            class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                            <option value="">Seleccionar...</option>
+                            <option *ngFor="let s of db" [value]="s.name">{{ s.name }}</option>
+                        </select>
                     </div>
-                    
+                    <div>
+                        <label for="collection" class="block text-sm font-medium text-gray-700 mb-2">
+                        Colección
+                        </label>
+                        <select
+                            id="collection"
+                            name="collection"
+                            [(ngModel)]="selectedCollection"
+                            class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                            <option value="">Seleccionar...</option>
+                            <option *ngFor="let c of collection" [value]="c">{{ c }}</option>
+
+                        </select>
+                    </div>   
+                    <div *ngIf="showSystemIDField">
+                        <label for="systemid" class="block text-sm font-medium text-gray-700 mb-2">
+                            System ID
+                        </label>
+                        <input
+                            type="text"
+                            id="systemid"
+                            name="systemid"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="100"
+                        >
+                    </div>
+                    <div *ngIf="showPasswordFieldReuso">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                            Contraseña
+                        </label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="100"
+                        >
+                    </div>                 
                     <div>
                         <label for="cantidad" class="block text-sm font-medium text-gray-700 mb-2">
                             Cantidad
@@ -162,76 +260,9 @@
                             placeholder="100"
                         >
                     </div>
-                    
-                    <!-- <div class="md:col-span-2">
-                        <label for="modificaciones" class="block text-sm font-medium text-gray-700 mb-2">
-                            Modificaciones Adicionales
-                        </label>
-                        <textarea
-                            id="modificaciones"
-                            name="modificaciones"
-                            rows="3"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Describe las modificaciones que deseas aplicar..."
-                        ></textarea>
-                    </div> -->
                 </div>
             </div>
         </div>
-
-        <!-- Timezone & Preferences Section
-        <div class="bg-gray-50 rounded-lg p-6">
-            <h2 class="text-xl font-medium text-gray-900 mb-2">Zona horaria y preferencias</h2>
-            <p class="text-gray-600 mb-6">Configura tu zona horaria y formato de fecha</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label for="ciudad" class="block text-sm font-medium text-gray-700 mb-2">
-                        Ciudad
-                    </label>
-                    <input
-                        type="text"
-                        id="ciudad"
-                        name="ciudad"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="New York"
-                        value="New York"
-                    >
-                </div>
-                
-                <div>
-                    <label for="zonaHoraria" class="block text-sm font-medium text-gray-700 mb-2">
-                        Zona horaria
-                    </label>
-                    <select
-                        id="zonaHoraria"
-                        name="zonaHoraria"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="UTC-4" selected>UTC/GMT -4 hours</option>
-                        <option value="UTC-3">UTC/GMT -3 hours</option>
-                        <option value="UTC-5">UTC/GMT -5 hours</option>
-                        <option value="UTC-6">UTC/GMT -6 hours</option>
-                        <option value="UTC+1">UTC/GMT +1 hours</option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label for="formatoFecha" class="block text-sm font-medium text-gray-700 mb-2">
-                        Formato de fecha y hora
-                    </label>
-                    <select
-                        id="formatoFecha"
-                        name="formatoFecha"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="dd/mm/yyyy HH:mm" selected>dd/mm/yyyy 00:00</option>
-                        <option value="mm/dd/yyyy HH:mm">mm/dd/yyyy 00:00</option>
-                        <option value="yyyy-mm-dd HH:mm">yyyy-mm-dd 00:00</option>
-                    </select>
-                </div>
-            </div>
-        </div> -->
 
         <!-- Submit Button -->
         <div class="flex justify-end">

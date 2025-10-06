@@ -13,11 +13,6 @@ class CreateServersTable extends Migration
             $table->id('id_server');
             $table->string('name');        // nombre amigable (ej: "Calidad")
             $table->string('url');                   // ip o dominio
-            $table->integer('port')->nullable();     // puerto (ej: 8080)
-            $table->string('path')->nullable();      // endpoint adicional (ej: /api/receive)
-            $table->json('headers')->nullable();     // cabeceras por defecto (JSON)
-            $table->json('auth')->nullable();        // datos de auth (guardar cifrados si lo deseas)
-            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

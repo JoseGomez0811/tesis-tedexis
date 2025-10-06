@@ -5,8 +5,9 @@ import { MainLayoutComponent } from './main-layout.component';
 import { TestingComponent } from './components/testing/testing.component';
 import { AddServerComponent } from './components/addServer/addServer.component';
 import { AddDBComponent } from './components/addDB/addDB.component';
-import { AuthSuccessComponent } from './components/auth-success/auth-success.component';
 import { PermissionComponent } from './components/permission/permission.component';
+import { AddConnectionComponent } from './components/addConnection/addConnection.component';
+import { LogsComponent } from './components/logs/logs.component';
 
 export const routes: Routes = [
   // Redirigir la raíz al login
@@ -40,12 +41,20 @@ export const routes: Routes = [
         component: AddServerComponent
       },
       {
+        path: 'nueva_conexion',
+        component: AddConnectionComponent
+      },
+      {
         path: 'nueva_base_de_datos',
         component: AddDBComponent
       },
       {
         path: 'permisos',
         component: PermissionComponent
+      },
+      {
+        path: 'regisros',
+        component: LogsComponent
       },
       {
         path: '',

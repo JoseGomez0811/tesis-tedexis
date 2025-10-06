@@ -16,9 +16,9 @@ export class AddDBComponent {
   port: number = 0; // ✅ Cambiar a number
   user = '';
   password = '';
-  bd_user = '';
-  bd_mensaje = '';
-  collection = '';
+  auth_db = '';
+  name_db = '';
+  //collection = '';
 
   constructor(private apiService: ApiService) {
     console.log('🔧 ApiService inyectado:', !!this.apiService);
@@ -29,8 +29,14 @@ export class AddDBComponent {
     event.preventDefault();
     
     // ✅ Validación básica antes de enviar
-    if (!this.name || !this.host || !this.port || !this.user || !this.password || 
-        !this.bd_user || !this.bd_mensaje || !this.collection) {
+    // if (!this.name || !this.host || !this.port || !this.user || !this.password || 
+    //     !this.auth_db || !this.name_db || !this.collection) {
+    //   console.error('❌ Todos los campos son requeridos');
+    //   alert('Por favor completa todos los campos');
+    //   return;
+    // }
+
+    if (!this.name || !this.host || !this.port || !this.user || !this.password || !this.name_db) {
       console.error('❌ Todos los campos son requeridos');
       alert('Por favor completa todos los campos');
       return;
@@ -42,9 +48,9 @@ export class AddDBComponent {
       port: Number(this.port), // ✅ Asegurar que sea número
       user: this.user,
       password: this.password,
-      bd_user: this.bd_user,
-      bd_mensaje: this.bd_mensaje,
-      collection: this.collection
+      auth_db: this.auth_db,
+      name_db: this.name_db,
+      // collection: this.collection
     };
 
     console.log('📤 Datos a enviar:', newDB);
@@ -77,8 +83,8 @@ export class AddDBComponent {
     this.port = 0;
     this.user = '';
     this.password = '';
-    this.bd_user = '';
-    this.bd_mensaje = '';
-    this.collection = '';
+    this.auth_db = '';
+    this.name_db = '';
+    //this.collection = '';
   }
 }

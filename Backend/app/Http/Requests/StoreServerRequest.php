@@ -12,12 +12,7 @@ class StoreServerRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:191|unique:servers,name',
-            'url'  => 'required|string|max:255',
-            'port' => 'nullable|integer',
-            'path' => 'nullable|string|max:255',
-            'headers' => 'nullable|array',
-            'auth' => 'nullable|array',
-            'notes' => 'nullable|string'
+            'url'  => 'required|string|max:255'
         ];
     }
 }

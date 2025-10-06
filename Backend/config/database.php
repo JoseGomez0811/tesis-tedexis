@@ -113,14 +113,14 @@ return [
         ],
 
         'mongodb' => [
-            'driver' => 'mongodb',
-            'host' => env('MONGODB_HOST', '127.0.0.1'),
-            'port' => env('MONGODB_PORT', 27017),
-            'database' => env('MONGODB_DATABASE', 'app'),
-            'username' => env('MONGODB_USERNAME'),
-            'password' => env('MONGODB_PASSWORD'),
-            'options' => [
-                'database' => env('MONGODB_AUTHENTICATION_DATABASE', 'admin'),
+            'driver'   => 'mongodb',
+            'host'     => env('MONGO_HOST', '127.0.0.1'),
+            'port'     => env('MONGO_PORT', 27017),
+            'database' => env('MONGO_DATABASE', 'trafico2025'),
+            'username' => env('MONGO_USERNAME', ''),
+            'password' => env('MONGO_PASSWORD', ''),
+            'options'  => [
+                'database' => env('MONGO_AUTHENTICATION_DATABASE', 'admin'),
             ],
         ],
 

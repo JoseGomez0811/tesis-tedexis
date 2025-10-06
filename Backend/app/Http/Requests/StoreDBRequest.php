@@ -16,9 +16,9 @@ class StoreDBRequest extends FormRequest
             'port'       => 'required|integer',
             'user'       => 'required|string|max:255',
             'password'   => 'required|string|max:255',
-            'bd_user'    => 'required|string|max:255',
-            'bd_mensaje' => 'required|string|max:255',
-            'collection' => 'required|string|max:255',
+            'auth_db'    => 'required|string|max:255',
+            'name_db' => 'required|string|max:255',
+            //'collection' => 'required|string|max:255',
         ];
     }
 }
