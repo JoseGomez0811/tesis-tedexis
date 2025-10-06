@@ -5,7 +5,6 @@ import { MainLayoutComponent } from './main-layout.component';
 import { TestingComponent } from './components/testing/testing.component';
 import { AddServerComponent } from './components/addServer/addServer.component';
 import { AddDBComponent } from './components/addDB/addDB.component';
-import { AuthSuccessComponent } from './components/auth-success/auth-success.component';
 import { PermissionComponent } from './components/permission/permission.component';
 
 export const routes: Routes = [
