@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ServerController;
-use App\Http\Controllers\Api\SimulationController;
+use App\Http\Controllers\Api\ConnectionController;
+use App\Http\Controllers\Api\SendSimulationController;
 use App\Http\Controllers\Api\DatabaseConnectionController;
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Api\CollectionsDBController;
 use Illuminate\Http\Request;
 
 Route::prefix('v1')->group(function () {
@@ -13,8 +15,10 @@ Route::prefix('v1')->group(function () {
     Route::post('servers', [ServerController::class, 'store']);
     Route::get('servers/{id}', [ServerController::class, 'show']);
 
-    // --- SIMULATIONS ---
-    //Route::post('simulations/send', [SimulationController::class, 'send']);
+    // --- CONNECTIONS ---
+    Route::get('connections', [ConnectionController::class, 'index']);
+    Route::post('connections', [ConnectionController::class, 'store']);
+    Route::get('connections/{id}', [ConnectionController::class, 'show']);
 
     // --- DATABASE CONNECTIONS ---
     Route::get('databases', [DatabaseConnectionController::class, 'index']);
@@ -22,6 +26,15 @@ Route::prefix('v1')->group(function () {
     Route::get('databases/{id}', [DatabaseConnectionController::class, 'show']);
     Route::put('databases/{id}', [DatabaseConnectionController::class, 'update']);
     Route::delete('databases/{id}', [DatabaseConnectionController::class, 'destroy']);
+
+    // --- COLLECTIONS MONGO BATABASE ---
+    Route::get('/mongo/{id}/collections', [CollectionsDBController::class, 'getCollections']);
+    Route::get('/mongo/{id}/collections/{collection}', [CollectionsDBController::class, 'getCollectionData']);
+    Route::get('/mongo/{id}/collections/{collection}/{docId}', [CollectionsDBController::class, 'getDocument']);
+
+    // --- SIMULATIONS ---
+    Route::get('/get_data', [SendSimulationController::class, 'index']);
+    Route::post('/send_data', [SendSimulationController::class, 'send']);
 });
 
 Route::middleware('auth:sanctum')->get('/me', function (Request $request) {

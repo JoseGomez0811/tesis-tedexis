@@ -16,9 +16,9 @@ class DatabaseConnection extends Model
         'port',
         'user',
         'password',
-        'bd_user',
-        'bd_mensaje',
-        'collection',
+        'auth_db',
+        'name_db',
+        //'collection',
     ];
 
     protected $hidden = [

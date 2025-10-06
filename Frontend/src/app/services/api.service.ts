@@ -26,11 +26,6 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/servers`, data);
   }
 
-  // --- SIMULATIONS ---
-  sendSimulation(data: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/simulations/send`, data);
-  }
-
   // --- DATABASES ---
   getDatabases(): Observable<any> {
     return this.http.get(`${this.baseUrl}/databases`); // ✅ Cambiado
@@ -49,4 +44,37 @@ export class ApiService {
   deleteDatabase(id: number): Observable<any> {
     return this.http.delete(`${this.baseUrl}/databases/${id}`, this.httpOptions); // ✅ Con headers
   }
+
+  // --- CONNECTIONS ---
+  getConnection(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/connections`);
+  }
+
+  addConnection(data: any): Observable<any> {
+    console.log('🚀 Datos:', data);
+    return this.http.post(`${this.baseUrl}/connections`, data);
+  }
+
+// --- COLLECTIONS ---
+getCollections(dbId: string): Observable<any> {
+  return this.http.get(`${this.baseUrl}/mongo/${dbId}/collections`);
+}
+
+getCollectionData(dbId: string, collection: string): Observable<any> {
+  return this.http.get(`${this.baseUrl}/mongo/${dbId}/collections/${collection}`);
+}
+
+getDocument(dbId: string, collection: string, docId: string): Observable<any> {
+  return this.http.get(`${this.baseUrl}/mongo/${dbId}/collections/${collection}/${docId}`);
+}
+// --- SIMULATIONS ---
+  getSimulation(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/get_data`);
+  }
+
+  sendSimulation(data: any): Observable<any> {
+    console.log('🚀 Datos:', data);
+    return this.http.post(`${this.baseUrl}/send_data`, data);
+  }
+
 }

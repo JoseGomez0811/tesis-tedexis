@@ -12,7 +12,7 @@ class ServerController extends Controller
     // Listar servidores (para llenar el select en Angular)
     public function index()
     {
-        $servers = Server::orderBy('name')->get(['id_server','name','url','port','path']);
+        $servers = Server::orderBy('name')->get(['id_server','name','url']);
         return response()->json($servers);
     }
 
@@ -20,10 +20,6 @@ class ServerController extends Controller
     public function store(StoreServerRequest $request)
     {
         $data = $request->validated();
-
-        $data['headers'] = isset($data['headers']) ? json_encode($data['headers']) : null;
-        $data['auth'] = isset($data['auth']) ? json_encode($data['auth']) : null;
-
         $server = Server::create($data);
 
         return response()->json([

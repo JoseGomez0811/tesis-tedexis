@@ -14,9 +14,9 @@ return new class extends Migration {
             $table->integer('port');        // puerto (ej. 5432, 3306)
             $table->string('user');        // usuario de conexión
             $table->string('password');     // password de conexión
-            $table->string('bd_user');        // nombre de la base de datos del usuario
-            $table->string('bd_mensaje');     // nombre de la base de datos de mensajes
-            $table->string('collection');      // nombre de la colección (MongoDB) o tabla lógica
+            $table->string('auth_db');        // nombre de la base de datos del usuario
+            $table->string('name_db');     // nombre de la base de datos de mensajes
+            //$table->string('collection')->nullable();      // nombre de la colección (MongoDB) o tabla lógica
             $table->timestamps();
         });
     }

@@ -12,11 +12,6 @@ class Server extends Model
 
     protected $fillable = [
         'name',
-        'url',
-        'port',
-        'path',
-        'headers',
-        'auth',
-        'notes'
+        'url'
     ];
 }

@@ -11,7 +11,6 @@ import { FormsModule } from '@angular/forms';
 export class AddServerComponent {
   nombre = '';
   ip = '';
-  puerto = '';
 
   constructor(private apiService: ApiService) {}
 
@@ -21,7 +20,6 @@ export class AddServerComponent {
     const newServer = {
       name: this.nombre,
       url: this.ip,
-      port: this.puerto ? parseInt(this.puerto, 10) : null
     };
 
     this.apiService.addServer(newServer).subscribe({
@@ -30,7 +28,6 @@ export class AddServerComponent {
         console.log(res);
         this.nombre = '';
         this.ip = '';
-        this.puerto = '';
       },
       error: err => {
         alert('Error al añadir servidor ❌');

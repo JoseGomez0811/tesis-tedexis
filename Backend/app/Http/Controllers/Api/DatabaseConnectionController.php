@@ -12,7 +12,7 @@ class DatabaseConnectionController extends Controller
     // Listar conexiones
     public function index()
     {
-        $db = DatabaseConnection::orderBy('name')->get(['id','name','host','port','user', 'bd_user', 'bd_mensaje', 'collection']);
+        $db = DatabaseConnection::orderBy('name')->get(['id','name','host','port','user', 'auth_db', 'name_db']);
         return response()->json($db);
     }
 
@@ -48,9 +48,9 @@ class DatabaseConnectionController extends Controller
             'port'     => 'required|integer',
             'user'    => 'required|string|max:255',
             'password' => 'required|string|max:255',
-            'bd_user'    => 'required|string|max:255',
-            'bd_mensaje' => 'required|string|max:255',
-            'collection'  => 'required|string|max:255',
+            'auth_db'    => 'required|string|max:255',
+            'name_db' => 'required|string|max:255',
+            //'collection'  => 'required|string|max:255',
         ]);
 
         $connection->update($validated);
