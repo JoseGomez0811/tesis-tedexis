@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Support\Facades\Log;
 use MongoDB\Client;
 use MongoDB\Exception\Exception; // Importar la clase de excepción de Mongo
+use MongoDB\BSON\ObjectId;
 
 class CollectionsDB
 {
@@ -28,14 +29,12 @@ class CollectionsDB
         $authDb   = $connection['auth_db'] ?? $connection->auth_db;
         $dbName   = $connection['name_db'] ?? $connection->name_db;
 
-        //$uri = "mongodb://{$user}:{$password}@{$host}:{$port}/?authSource={$authDb}";
-        $uri = "mongodb+srv://{$user}:{$password}@{$host}";
+        $uri = "mongodb://{$user}:{$password}@{$host}:{$port}/?authSource={$authDb}";
+        // $uri = "mongodb+srv://{$user}:{$password}@{$host}";
         Log::error("MONGO_DEBUG: URI de conexión utilizada: " . $uri);
             // 🤝 Conexión a Mongo
         $client = new Client($uri);
 
-        // Intenta realizar una operación simple para forzar la conexión (como obtener el estado del servidor)
-        // Esto hará que el error se lance aquí, en lugar de en selectDatabase o listCollections.
         try {
             $client->selectDatabase('admin')->command(['ping' => 1]);
         } catch (\Exception $e) {
@@ -86,11 +85,39 @@ class CollectionsDB
 
 // ---
 
+    // public function getDocument($connection, $collectionName, $documentId)
+    // {
+    //     $db = $this->connect($connection);
+
+    //     // ⚠️ sin usar ObjectId, lo tratamos como string
+    //     return $db->selectCollection($collectionName)->findOne(['_id' => $documentId]);
+    // }
+
+    // public function getDocument($connection, $collectionName, $documentId)
+    // {
+    //     $db = $this->connect($connection);
+        
+    //     try {
+    //         // 🎯 CLAVE: Convertir la cadena $documentId al tipo ObjectId de MongoDB
+    //         $objectId = new ObjectId($documentId);
+    //     } catch (\InvalidArgumentException $e) {
+    //         // Esto podría ocurrir si $documentId no es una cadena hexadecimal válida de 24 caracteres.
+    //         // Manejar el error o devolver null si el ID es inválido.
+    //         error_log("ID de documento inválido: " . $documentId);
+    //         return null; 
+    //     }
+
+    //     // Usar el objeto ObjectId para la consulta
+    //     return $db->selectCollection($collectionName)->findOne(['_id' => $objectId]);
+    // }
+
     public function getDocument($connection, $collectionName, $documentId)
     {
         $db = $this->connect($connection);
-
-        // ⚠️ sin usar ObjectId, lo tratamos como string
-        return $db->selectCollection($collectionName)->findOne(['_id' => $documentId]);
+        
+        // La conversión es necesaria para que la búsqueda funcione en MongoDB:
+        $objectId = new ObjectId($documentId);
+        
+        return $db->selectCollection($collectionName)->findOne(['_id' => $objectId]);
     }
 }

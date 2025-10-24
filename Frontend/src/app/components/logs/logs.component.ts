@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ApiService } from '../../services/api.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -11,117 +12,110 @@ import { Router } from '@angular/router';
   templateUrl: './logs.component.html',
 })
 export class LogsComponent implements OnInit {
-  user: any = null; // Usuario autenticado
+  userList: any[] = [];
+  logs: any[] = [];
+  filteredLogs: any[] = [];
+
+  filtroUsuario = '';
+  filtroFecha = '';
+  fechaEspecifica = '';
 
   googleUserData = {
     fullName: '',
     email: '',
-    department: '',
-    jobTitle: '',
-    organization: '',
-    manager: '',
     accessLevel: '',
-    lastLogin: ''
   };
 
-  historial: any[] = [
-    { servidor: 'Servidor 1', conexion: 'SMPP', mensaje: 'Login exitoso', cantidad: 1, fecha: '2025-07-23' },
-    { servidor: 'Servidor 2', conexion: 'MQ', mensaje: 'Envío de mensaje', cantidad: 3, fecha: '2025-07-22' },
-  ];
-
-  filtroServidor: string = '';
-  filtroConexion: string = '';
-  filtroFecha: string = '';
-  fechaEspecifica: string = '';
-
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private apiService: ApiService,
+    private authService: AuthService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-  const params = new URLSearchParams(window.location.search);
-
-  const token = params.get('token');
-  const userParam = params.get('user'); // <-- ahora viene del backend
-
-  if (token) {
-    let userData: any = null;
-    if (userParam) {
-      try {
-        userData = JSON.parse(userParam);
-      } catch (e) {
-        console.error('❌ Error al parsear user data:', e);
-      }
+    const user = this.authService.getUser();
+    if (user) {
+      this.googleUserData = {
+        fullName: user.name || '',
+        email: user.email || '',
+        accessLevel: 'Usuario',
+      };
+    } else {
+      this.authService.logout();
     }
 
-    // Guardar token y usuario real en AuthService / localStorage
-    this.authService.handleAuthSuccess(token, userData);
+    this.loadUsers();
+    this.loadLogs();
   }
 
-  // Obtener usuario desde AuthService
-  const user = this.authService.getUser();
-  if (user) {
-    this.user = user;
-    console.log('👤 Usuario cargado desde Google:', this.user);
-
-    this.googleUserData = {
-      fullName: this.user.name || '',
-      email: this.user.email || '',
-      department: this.user.department || '',
-      jobTitle: this.user.jobTitle || '',
-      organization: 'Tedexis',
-      manager: this.user.manager || '',
-      accessLevel: 'Usuario',
-      lastLogin: new Date().toLocaleDateString()
-    };
-  } else {
-    console.warn('⚠️ No hay usuario autenticado, redirigiendo a login...');
-    this.authService.logout();
-  }
-}
-
-
-  // Filtrado del historial
-  get historialFiltrado() {
-    return this.historial.filter((item) => {
-      const cumpleServidor = this.filtroServidor ? item.servidor === this.filtroServidor : true;
-      const cumpleConexion = this.filtroConexion ? item.conexion === this.filtroConexion : true;
-      const fechaItem = item.fecha;
-      let cumpleFecha = true;
-      const hoy = new Date().toISOString().split('T')[0];
-
-      if (this.filtroFecha === 'hoy') {
-        cumpleFecha = fechaItem === hoy;
-      } else if (this.filtroFecha === 'semana') {
-        const hoyDate = new Date();
-        const fechaInicioSemana = new Date(hoyDate);
-        fechaInicioSemana.setDate(hoyDate.getDate() - hoyDate.getDay());
-        cumpleFecha = new Date(fechaItem) >= fechaInicioSemana;
-      } else if (this.filtroFecha === 'mes') {
-        const fechaActual = new Date();
-        const fechaRegistro = new Date(fechaItem);
-        cumpleFecha =
-          fechaRegistro.getMonth() === fechaActual.getMonth() &&
-          fechaRegistro.getFullYear() === fechaActual.getFullYear();
-      } else if (this.filtroFecha === 'año') {
-        const añoActual = new Date().getFullYear();
-        cumpleFecha = new Date(fechaItem).getFullYear() === añoActual;
-      } else if (this.filtroFecha === 'personalizada' && this.fechaEspecifica) {
-        cumpleFecha = fechaItem === this.fechaEspecifica;
-      }
-
-      return cumpleServidor && cumpleConexion && cumpleFecha;
+  /** 🔹 Cargar logs desde la API */
+  loadLogs() {
+    this.apiService.getLogs().subscribe({
+      next: (res: any) => {
+        this.logs = Array.isArray(res) ? res : res.data ?? [];
+        this.filteredLogs = [...this.logs];
+        console.log('📊 Logs cargados:', this.logs);
+      },
+      error: err => console.error('❌ Error cargando logs:', err)
     });
   }
 
-  onSubmit(event: Event) {
-    event.preventDefault();
-    console.log('💾 Configuración guardada:', this.googleUserData);
-    // Aquí puedes agregar lógica para enviar los datos al servidor si quieres
+  /** 🔹 Cargar usuarios */
+  loadUsers() {
+    this.apiService.getUsers().subscribe({
+      next: (res: any) => {
+        this.userList = Array.isArray(res) ? res : res.data ?? [];
+        console.log('📊 Usuarios cargados:', this.userList);
+      },
+      error: err => console.error('❌ Error cargando usuarios:', err)
+    });
   }
 
-  getAccessLevelClass(level: string) {
-    const base = 'px-2 py-1 text-xs font-medium rounded-full';
-    if (level === 'Administrador') return `${base} bg-red-100 text-red-700`;
-    if (level === 'Avanzado') return `${base} bg-yellow-100 text-yellow-700`;
-    return `${base} bg-green-100 text-green-700`;
+  /** 🔹 Filtrar logs por usuario y fecha */
+  applyFilters() {
+    this.filteredLogs = this.logs.filter(log => {
+      const selectedUser = this.userList.find(u => u.id === log.id_user);
+      const matchUsuario = this.filtroUsuario ? selectedUser?.name === this.filtroUsuario : true;
+
+      let matchFecha = true;
+      if (this.filtroFecha === 'hoy') {
+        const hoy = new Date().toDateString();
+        matchFecha = new Date(log.created_at).toDateString() === hoy;
+      } else if (this.filtroFecha === 'semana') {
+        const ahora = new Date();
+        const inicioSemana = new Date(ahora);
+        inicioSemana.setDate(ahora.getDate() - ahora.getDay());
+        matchFecha = new Date(log.created_at) >= inicioSemana;
+      } else if (this.filtroFecha === 'mes') {
+        const ahora = new Date();
+        const fechaLog = new Date(log.created_at);
+        matchFecha = fechaLog.getMonth() === ahora.getMonth() && fechaLog.getFullYear() === ahora.getFullYear();
+      } else if (this.filtroFecha === 'año') {
+        const ahora = new Date();
+        matchFecha = new Date(log.created_at).getFullYear() === ahora.getFullYear();
+      } else if (this.filtroFecha === 'personalizada' && this.fechaEspecifica) {
+        const fechaLog = new Date(log.created_at).toDateString();
+        const fechaSel = new Date(this.fechaEspecifica).toDateString();
+        matchFecha = fechaLog === fechaSel;
+      }
+
+      return matchUsuario && matchFecha;
+    });
+  }
+
+  /** 🔹 Obtener nombre de usuario por ID */
+  getUser(log: any): string {
+    const selectedUser = this.userList.find(u => u.id === log.id_user);
+    return selectedUser ? selectedUser.name : 'Desconocido';
+  }
+
+  /** 🔹 Obtener descripción */
+  getDescription(log: any): string {
+    return log.description || 'Desconocido';
+  }
+
+  /** 🔹 Obtener fecha formateada */
+  getDate(log: any): string {
+    return log.created_at ? new Date(log.created_at).toLocaleString() : 'Desconocido';
   }
 }

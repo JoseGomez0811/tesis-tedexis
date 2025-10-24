@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { AuthService, User } from '../../services/auth.service';
+import { ApiService } from '../../services/api.service';
 
 type FilterType = 'all' | 'pending' | 'authorized' | 'rejected';
 type NotificationType = 'success' | 'error';
@@ -23,9 +24,18 @@ export class PermissionComponent implements OnInit {
     notificationType: NotificationType = 'success';
     loading: boolean = false;
 
+    user: any = null;
+    db: any = null;
+
+  googleUserData = {
+    fullName: '',
+    email: '',
+  };
+
     constructor(
-        private authService: AuthService,
-    ) {}
+        private apiService: ApiService,
+        private authService: AuthService
+      ) {}
 
     ngOnInit(): void {
         this.loadUsers();
@@ -102,6 +112,58 @@ export class PermissionComponent implements OnInit {
                     this.showNotificationMessage('Error al autorizar usuario', 'error');
                 }
                 this.loading = false;
+
+                const currentUser = this.authService.getUser();
+
+                if (currentUser) {
+                this.user = currentUser;
+                this.googleUserData = {
+                    fullName: currentUser.name || '',
+                    email: currentUser.email || '',
+                };
+                } else {
+                this.authService.logout();
+                return; // Detiene la ejecución si no hay usuario
+                }
+
+                // 🔹 Obtenemos la lista de usuarios desde la API
+                this.apiService.getUsers().subscribe({
+                next: (users: any[]) => {
+                    // Busca el usuario cuyo nombre coincida con el usuario actual
+                    const matchedUser = users.find(
+                    (u) => u.name === this.googleUserData.fullName
+                    );
+
+                    if (matchedUser) {
+                        const id_user = matchedUser.id;
+                        
+                        const logData = {
+                        id_user: id_user,
+                        id_server: null,
+                        id_connection: null,
+                        id_db: null,
+                        id_simulation: null,
+                        description: 'Se aceptó una petición de autorización de usuario',
+                        };
+
+
+                        console.log('🟢 Log listo para enviar:', logData);
+
+                        // ✅ Enviar los logs al backend
+                        this.apiService.storeLogs(logData).subscribe({
+                            next: (res) => console.log('✅ Log guardado correctamente:', res),
+                            error: (err) => console.error('❌ Error al guardar log:', err),
+                        });
+
+                    
+                    } else {
+                    console.warn('⚠️ No se encontró el usuario en la base de datos');
+                    }
+                },
+                error: (err) => {
+                    console.error('❌ Error al obtener usuarios:', err);
+                },
+                });
             },
             error: (error) => {
                 console.error('Error autorizando usuario:', error);
@@ -127,6 +189,58 @@ export class PermissionComponent implements OnInit {
                     this.showNotificationMessage('Error al rechazar usuario', 'error');
                 }
                 this.loading = false;
+
+                const currentUser = this.authService.getUser();
+
+                if (currentUser) {
+                this.user = currentUser;
+                this.googleUserData = {
+                    fullName: currentUser.name || '',
+                    email: currentUser.email || '',
+                };
+                } else {
+                this.authService.logout();
+                return; // Detiene la ejecución si no hay usuario
+                }
+
+                // 🔹 Obtenemos la lista de usuarios desde la API
+                this.apiService.getUsers().subscribe({
+                next: (users: any[]) => {
+                    // Busca el usuario cuyo nombre coincida con el usuario actual
+                    const matchedUser = users.find(
+                    (u) => u.name === this.googleUserData.fullName
+                    );
+
+                    if (matchedUser) {
+                        const id_user = matchedUser.id;
+                        
+                        const logData = {
+                        id_user: id_user,
+                        id_server: null,
+                        id_connection: null,
+                        id_db: null,
+                        id_simulation: null,
+                        description: 'Se denegó una petición de autorización de usuario',
+                        };
+
+
+                        console.log('🟢 Log listo para enviar:', logData);
+
+                        // ✅ Enviar los logs al backend
+                        this.apiService.storeLogs(logData).subscribe({
+                            next: (res) => console.log('✅ Log guardado correctamente:', res),
+                            error: (err) => console.error('❌ Error al guardar log:', err),
+                        });
+
+                    
+                    } else {
+                    console.warn('⚠️ No se encontró el usuario en la base de datos');
+                    }
+                },
+                error: (err) => {
+                    console.error('❌ Error al obtener usuarios:', err);
+                },
+                });
             },
             error: (error) => {
                 console.error('Error rechazando usuario:', error);

@@ -4,22 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SendSimulation extends Model
+class StoreSimulation extends Model
 {
     protected $table = 'simulations';
     protected $primaryKey = 'id_simulation';
     public $timestamps = true;
     protected $fillable = [
-        'hostServer',
-        'portConnection',
-        'typeConnection',
+        'id_connection',
         'nameQueue',
-        'systemID',
+        'system_id',
         'password',
-        'phoneNumber',
+        'phone_number',
         'message',
         'number',
-        'shortCode',
+        'short_code',
         'encoding',
+        'id_db',
     ];
 }

@@ -17,6 +17,7 @@ services:
   angular:
     build:
       context: ./Frontend
+      dockerfile: Dockerfile
     container_name: tedexis_angular_app
     restart: unless-stopped
     command: ng serve --host 0.0.0.0 --port 4200

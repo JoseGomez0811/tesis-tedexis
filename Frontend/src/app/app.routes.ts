@@ -53,7 +53,7 @@ export const routes: Routes = [
         component: PermissionComponent
       },
       {
-        path: 'regisros',
+        path: 'registros',
         component: LogsComponent
       },
       {
