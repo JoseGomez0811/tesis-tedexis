@@ -11,7 +11,16 @@
       <h2 class="text-xl font-medium text-gray-900 mb-6">Perfil de Usuario</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Columna 1 -->
+        <!-- Avatar -->
+        <div class="flex flex-col items-center justify-center">
+          <img
+            [src]="googleUserData.picture"
+            alt="Avatar del usuario"
+            class="w-32 h-32 rounded-full shadow-md border border-gray-200 object-cover"
+          />
+        </div>
+
+        <!-- Información del usuario -->
         <div class="space-y-4">
           <div>
             <label class="text-xs font-medium text-gray-500 uppercase">Nombre Completo</label>
@@ -22,48 +31,11 @@
             <p class="text-gray-900">{{ googleUserData.email || 'No disponible' }}</p>
           </div>
           <div>
-            <label class="text-xs font-medium text-gray-500 uppercase">Departamento</label>
-            <p class="text-gray-900">{{ googleUserData.department || 'No disponible' }}</p>
-          </div>
-        </div>
-
-        <!-- Columna 2 -->
-        <div class="space-y-4">
-          <div>
-            <label class="text-xs font-medium text-gray-500 uppercase">Cargo</label>
-            <p class="text-gray-900">{{ googleUserData.jobTitle || 'No disponible' }}</p>
-          </div>
-          <div>
-            <label class="text-xs font-medium text-gray-500 uppercase">Organización</label>
-            <p class="text-gray-900">{{ googleUserData.organization || 'No disponible' }}</p>
-          </div>
-          <div>
-            <label class="text-xs font-medium text-gray-500 uppercase">Manager</label>
-            <p class="text-gray-900">{{ googleUserData.manager || 'No disponible' }}</p>
-          </div>
-        </div>
-
-        <!-- Columna 3 -->
-        <div class="space-y-4">
-          <div>
             <label class="text-xs font-medium text-gray-500 uppercase block mb-1">Nivel de Acceso</label>
             <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
                   [ngClass]="getAccessLevelClass(googleUserData.accessLevel)">
               {{ googleUserData.accessLevel || 'Básico' }}
             </span>
-          </div>
-
-          <div>
-            <label class="text-xs font-medium text-gray-500 uppercase block mb-1">Último Acceso</label>
-            <p class="text-gray-900">{{ googleUserData.lastLogin || 'No disponible' }}</p>
-          </div>
-
-          <div>
-            <label class="text-xs font-medium text-gray-500 uppercase block mb-1">Estado</label>
-            <div class="inline-flex items-center mt-1">
-              <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-              <span class="text-sm text-gray-900">Activo</span>
-            </div>
           </div>
         </div>
       </div>
@@ -73,35 +45,23 @@
     <div class="bg-gray-50 rounded-lg p-6 space-y-6">
       <h2 class="text-xl font-medium text-gray-900">Historial de Simulaciones</h2>
 
-      <!-- Filtros -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- 🔹 Filtros -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Filtro por Servidor -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Servidor</label>
-          <select [(ngModel)]="filtroServidor" name="filtroServidor"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring focus:ring-blue-500">
+          <select [(ngModel)]="filtroServidor" name="filtroServidor" (change)="applyFilters()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500">
             <option value="">Todos</option>
-            <option value="Servidor 1">Servidor 1</option>
-            <option value="Servidor 2">Servidor 2</option>
-          </select>
-        </div>
-
-        <!-- Filtro por Conexión -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Conexión</label>
-          <select [(ngModel)]="filtroConexion" name="filtroConexion"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring focus:ring-blue-500">
-            <option value="">Todas</option>
-            <option value="SMPP">SMPP</option>
-            <option value="MQ">MQ</option>
+            <option *ngFor="let server of servers" [value]="server.url">{{ server.url }}</option>
           </select>
         </div>
 
         <!-- Filtro por Fecha -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Filtrar por Fecha</label>
-          <select [(ngModel)]="filtroFecha" name="filtroFecha"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring focus:ring-blue-500">
+          <select [(ngModel)]="filtroFecha" name="filtroFecha" (change)="applyFilters()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500">
             <option value="">Todas</option>
             <option value="hoy">Hoy</option>
             <option value="semana">Esta semana</option>
@@ -110,44 +70,64 @@
             <option value="personalizada">Fecha específica</option>
           </select>
 
-          <!-- Input de fecha específica -->
+          <!-- Input de fecha personalizada -->
           <div *ngIf="filtroFecha === 'personalizada'" class="mt-3">
-            <input
-              type="date"
-              [(ngModel)]="fechaEspecifica"
-              name="fechaEspecifica"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
-            />
+            <input type="date" [(ngModel)]="fechaEspecifica" name="fechaEspecifica" (change)="applyFilters()"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500">
           </div>
         </div>
       </div>
 
-      <!-- Tabla de Historial -->
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-          <thead class="bg-gray-100 text-gray-700 text-left">
-            <tr>
-              <th class="px-4 py-2">Servidor</th>
-              <th class="px-4 py-2">Conexión</th>
-              <th class="px-4 py-2">Mensaje</th>
-              <th class="px-4 py-2">Cantidad</th>
-              <th class="px-4 py-2">Fecha</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200 text-gray-800">
-            <tr *ngFor="let registro of historialFiltrado">
-              <td class="px-4 py-2">{{ registro.servidor }}</td>
-              <td class="px-4 py-2">{{ registro.conexion }}</td>
-              <td class="px-4 py-2">{{ registro.mensaje }}</td>
-              <td class="px-4 py-2">{{ registro.cantidad }}</td>
-              <td class="px-4 py-2">{{ registro.fecha }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- 🔹 Tabla de simulaciones -->
+      <div class="mt-6">
+        <div *ngIf="filteredSimulations.length > 0; else noSimulations"
+             class="border border-gray-200 rounded-xl overflow-hidden shadow-inner">
+          <div class="overflow-x-auto overflow-y-auto max-h-72">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+              <thead class="bg-gray-100 sticky top-0 shadow-sm">
+                <tr>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase w-20">Seleccionar</th>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Servidor</th>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Conexión</th>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Mensaje</th>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Cantidad</th>
+                  <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Fecha</th>
+                </tr>
+              </thead>
+
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr *ngFor="let sim of filteredSimulations"
+                    (click)="selectSimulation(sim)"
+                    [ngClass]="{
+                      'bg-blue-100/50 shadow-inner border-l-4 border-blue-600': simIsSelected(sim),
+                      'hover:bg-gray-50 transition duration-150': !simIsSelected(sim)
+                    }"
+                    class="cursor-pointer">
+                  <td class="px-6 py-3">
+                    <input type="radio" name="selectedSimulation" [checked]="simIsSelected(sim)"
+                           (click)="$event.stopPropagation(); selectSimulation(sim)"
+                           class="form-radio h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                  </td>
+                  <td class="px-6 py-3 text-gray-800 font-medium">{{ getServerHost(sim) || '—' }}</td>
+                  <td class="px-6 py-3 text-gray-800 font-medium">{{ getConnectionType(sim) || '—' }}</td>
+                  <td class="px-6 py-3 text-gray-800 truncate max-w-xs">{{ sim.message || '—' }}</td>
+                  <td class="px-6 py-3 text-gray-800">{{ sim.number || '—' }}</td>
+                  <td class="px-6 py-3 text-gray-800">{{ getDate(sim) || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <ng-template #noSimulations>
+          <div class="mt-4 p-4 text-center text-gray-500 bg-gray-100 rounded-lg border border-dashed border-gray-300">
+            No se encontraron simulaciones guardadas en tu historial.
+          </div>
+        </ng-template>
       </div>
     </div>
 
-    <!-- Botón Guardar -->
+    <!-- Botón Enviar -->
     <div class="flex justify-end">
       <button
         type="submit"

@@ -13,29 +13,22 @@ return new class extends Migration
     {
         Schema::create('simulations', function (Blueprint $table) {
             $table->id('id_simulation');
-            $table->string('system_id');
-            $table->string('password')->nullable();
-            $table->integer('phone_number');
-            $table->string('message');
-            $table->integer('number');
-            $table->integer('short_code');
-            $table->string('encoding');
 
-            $table->unsignedBigInteger('id_user');
+            // $table->unsignedBigInteger('id_user');
 
-            $table->foreign('id_user')
-                  ->references('id')
-                  ->on('users')
-                  ->onUpdate('cascade')
-                  ->onDelete('cascade');
+            // $table->foreign('id_user')
+            //       ->references('id')
+            //       ->on('users')
+            //       ->onUpdate('cascade')
+            //       ->onDelete('cascade');
+            
+            // $table->unsignedBigInteger('id_server');
 
-            $table->unsignedBigInteger('id_server');
-
-            $table->foreign('id_server')
-                  ->references('id_server')
-                  ->on('servers')
-                  ->onUpdate('cascade')
-                  ->onDelete('cascade');
+            // $table->foreign('id_server')
+            //       ->references('id_server')
+            //       ->on('servers')
+            //       ->onUpdate('cascade')
+            //       ->onDelete('cascade');
 
             $table->unsignedBigInteger('id_connection');
 
@@ -45,8 +38,14 @@ return new class extends Migration
                   ->onUpdate('cascade')
                   ->onDelete('cascade');
 
-            // crear un nuevo campo que almacene el nombre de la cola, puede ser null es caso de que la conexión sea a través de smpp
             $table->string('nameQueue')->nullable();
+            $table->string('system_id');
+            $table->string('password')->nullable();
+            $table->string('phone_number', 50);
+            $table->string('message');
+            $table->integer('number');
+            $table->integer('short_code');
+            $table->string('encoding');
 
             $table->unsignedBigInteger('id_db')->nullable();
 
@@ -56,13 +55,13 @@ return new class extends Migration
                   ->onUpdate('cascade')
                   ->onDelete('cascade');
            
-            $table->unsignedBigInteger('id_collection')->nullable();
+            // $table->unsignedBigInteger('id_collection')->nullable();
 
-            $table->foreign('id_collection')
-                  ->references('id_collection')
-                  ->on('collections_db')
-                  ->onUpdate('cascade')
-                  ->onDelete('cascade');
+            // $table->foreign('id_collection')
+            //       ->references('id_collection')
+            //       ->on('collections_db')
+            //       ->onUpdate('cascade')
+            //       ->onDelete('cascade');
 
             $table->timestamps();
         });

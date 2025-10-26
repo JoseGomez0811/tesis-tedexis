@@ -68,13 +68,34 @@ getDocument(dbId: string, collection: string, docId: string): Observable<any> {
   return this.http.get(`${this.baseUrl}/mongo/${dbId}/collections/${collection}/${docId}`);
 }
 // --- SIMULATIONS ---
+
   getSimulation(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/get_data`);
+    return this.http.get(`${this.baseUrl}/get_simulation`);
+  }
+
+  storeSimulation(data: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/store_data`, data);
   }
 
   sendSimulation(data: any): Observable<any> {
     console.log('🚀 Datos:', data);
     return this.http.post(`${this.baseUrl}/send_data`, data);
+  }
+  
+  // --- LOGS ---
+
+  getLogs(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/logs`);
+  }
+
+  storeLogs(data: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/store_logs`, data);
+  }
+
+  // --- USERS ---
+
+  getUsers(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/users`);
   }
 
 }

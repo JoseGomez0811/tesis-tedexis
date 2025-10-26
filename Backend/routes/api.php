@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\SendSimulationController;
 use App\Http\Controllers\Api\DatabaseConnectionController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Api\CollectionsDBController;
+use App\Http\Controllers\Api\LogsController;
+use App\Http\Controllers\Api\UsersController;
 use Illuminate\Http\Request;
 
 Route::prefix('v1')->group(function () {
@@ -33,8 +35,16 @@ Route::prefix('v1')->group(function () {
     Route::get('/mongo/{id}/collections/{collection}/{docId}', [CollectionsDBController::class, 'getDocument']);
 
     // --- SIMULATIONS ---
-    Route::get('/get_data', [SendSimulationController::class, 'index']);
+    Route::get('/get_simulation', [SendSimulationController::class, 'index']);
+    Route::post('/store_data', [SendSimulationController::class, 'store']);
     Route::post('/send_data', [SendSimulationController::class, 'send']);
+
+    // --- LOGS ---
+    Route::get('logs', [LogsController::class, 'index']);
+    Route::post('store_logs', [LogsController::class, 'store']);
+
+    // --- USERS ---
+    Route::get('users', [UsersController::class, 'index']);
 });
 
 Route::middleware('auth:sanctum')->get('/me', function (Request $request) {

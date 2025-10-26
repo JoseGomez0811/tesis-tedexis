@@ -13,13 +13,36 @@ return new class extends Migration
     {
         Schema::create('logs', function (Blueprint $table) {
             $table->id('id_logs');
-            $table->string('description');
 
             $table->unsignedBigInteger('id_user');
 
             $table->foreign('id_user')
                   ->references('id')
                   ->on('users')
+                  ->onUpdate('cascade')
+                  ->onDelete('cascade');
+
+            $table->unsignedBigInteger('id_server')->nullable();
+
+            $table->foreign('id_server')
+                  ->references('id_server')
+                  ->on('servers')
+                  ->onUpdate('cascade')
+                  ->onDelete('cascade');
+
+            $table->unsignedBigInteger('id_connection')->nullable();
+
+            $table->foreign('id_connection')
+                  ->references('id_connection')
+                  ->on('connections')
+                  ->onUpdate('cascade')
+                  ->onDelete('cascade');
+
+            $table->unsignedBigInteger('id_db')->nullable();
+
+            $table->foreign('id_db')
+                  ->references('id')
+                  ->on('database_connections')
                   ->onUpdate('cascade')
                   ->onDelete('cascade');
 
@@ -30,6 +53,8 @@ return new class extends Migration
                   ->on('simulations')
                   ->onUpdate('cascade')
                   ->onDelete('cascade');
+
+            $table->string('description', 500);
 
             $table->timestamps();
         });
