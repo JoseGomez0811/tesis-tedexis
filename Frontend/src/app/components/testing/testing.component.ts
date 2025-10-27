@@ -321,32 +321,47 @@ export class TestingComponent implements OnInit {
     const selectedServer = this.servers.find(server => server.name === this.selectedServer);
     const serverUrl = selectedServer?.url;
     const serverID = selectedServer?.id_server;
-    const selectedConnection = this.connections.find(connection => connection.name === this.selectedConnection);
+    //const selectedConnection = this.connections.find(connection => connection.name === this.selectedConnection);
+    const selectedConnection = this.filteredConnections.find(connection => connection.name === this.selectedConnection);
     const connectionPort = selectedConnection?.port;
     const connectionType = selectedConnection?.type;
     const connectionID = selectedConnection?.id_connection;
     const selectedDatabase = this.db.find(database => database.name === this.selectedDB);
     const dbId = selectedDatabase?.id;
 
-    const user = this.authService.getUser();
-    if (user) {
-      const userId = user.name;
-      console.log('👤 Usuario cargado. Nombre:', userId);
-    } else {
-      console.log('⚠️ No hay usuario autenticado');
-    }
+    // Obtener usuario actual y proteger el acceso a su propiedad `name`.
+    const currentUser = this.authService.getUser();
+    let matchedUser: any = null;
 
-    const storeSimulation: any = {
-      id_server: serverID,
-      id_connection: connectionID,
-      nameQueue: this.nombreCola,
-    };
+    if (currentUser && currentUser.name) {
+      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+      try {
+        const users = await lastValueFrom(this.apiService.getUsers());
+        // Varias APIs devuelven directamente un array o un objeto { data: [...] }
+        const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+        matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+      } catch (err) {
+        console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        // No bloqueamos todo el proceso por un fallo al obtener la lista de usuarios;
+        // matchedUser permanecerá en null y el id_user será enviado como null.
+      }
+    } else {
+      console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      this.authService.logout();
+      this.isSubmitting = false;
+      return; // Salimos porque no hay usuario con el que asociar la acción
+    }
+  // if (matchedUser) {
+  //   const id_user = matchedUser.id;
+  // }
 
     const simulationDataBase: any = {
       hostServer: serverUrl,
       portConnection: connectionPort,
       typeConnection: connectionType,
       nameQueue: this.nombreCola,
+      id_connection: connectionID,
+      id_db: dbId,
     };
 
     try {
@@ -364,84 +379,101 @@ export class TestingComponent implements OnInit {
         // Ejecutar simulaciones de forma secuencial
         for (let index = 0; index < this.phoneNumbers.length; index++) {
           const num = this.phoneNumbers[index];
-          
-          const simulationData: any = { 
-            ...simulationDataBase, 
-            requestId: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}` };
-          const storeData: any = { ...storeSimulation };
 
-          simulationData.systemID = this.systemId;
-          simulationData.password = this.password;
-          simulationData.phoneNumber = num.trim();
-          simulationData.message = this.mensaje;
-          simulationData.number = this.cantidad;
-          simulationData.shortCode = Number(this.sc);
-          simulationData.encoding = this.encoding;
-
-          storeData.system_id = this.systemId;
-          storeData.password = this.password;
-          storeData.phone_number = num.trim();
-          storeData.message = this.mensaje;
-          storeData.number = this.cantidad;
-          storeData.short_code = Number(this.sc);
-          storeData.encoding = this.encoding;
+          const simulationData: any = {
+            ...simulationDataBase,
+            requestId: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+            systemID: this.systemId,
+            password: this.password,
+            phoneNumber: num.trim(),
+            message: this.mensaje,
+            number: this.cantidad,
+            shortCode: Number(this.sc),
+            encoding: this.encoding,
+            id_user: matchedUser ? matchedUser.id : null,
+            description: `El usuario ejecutó una simulación:
+                    Host = ${simulationDataBase.hostServer || 'Desconocido'}, 
+                    Puerto = ${simulationDataBase.portConnection || 'Desconocido'},
+                    Nombre Cola = ${simulationDataBase.nameQueue || 'Desconocido'},
+                    Número de Teléfono = ${num.trim() || 'Desconocido'},
+                    Short Code = ${Number(this.sc) || 'Desconocido'}`,
+          };
 
           console.log(`🚀 Enviando simulación ${index + 1}/${this.phoneNumbers.length} con número: ${num}`);
 
+          
+          
+          
+          
+          
+          
           try {
-            // Enviar simulación
+            // 👉 Enviar y almacenar simulación (un solo endpoint)
             const res = await lastValueFrom(this.apiService.sendSimulation(simulationData));
-            console.log(`✅ Simulación ${index + 1} enviada con éxito:`, res);
+            console.log(`✅ Simulación ${index + 1} enviada y almacenada:`, res);
 
-            // Guardar registro en base de datos
-            const r = await lastValueFrom(this.apiService.storeSimulation(storeData));
-            console.log('📦 Simulación almacenada:', r);
+            // const id_simulation = res?.id_simulation;
+            // console.log('🆕 ID de simulación generado:', id_simulation);
 
-            const id_simulation = r?.id_simulation;
-            console.log('🆕 ID de simulación generado:', id_simulation);
+            // if (!id_simulation) {
+            //   console.error('❌ No se pudo obtener el ID de la simulación');
+            //   failedSimulations++;
+            //   continue;
+            // }
 
-            if (!id_simulation) {
-              console.error('❌ No se pudo obtener el ID de la simulación');
-              failedSimulations++;
-              continue;
-            }
 
-            // Obtener usuario actual
-            const currentUser = this.authService.getUser();
-            if (!currentUser) {
-              this.authService.logout();
-              failedSimulations++;
-              continue;
-            }
 
-            // Obtener usuarios y crear log
-            try {
-              const users = await lastValueFrom(this.apiService.getUsers());
-              const matchedUser = users.find((u: any) => u.name === currentUser.name);
-              
-              if (matchedUser) {
-                const id_user = matchedUser.id;
-                const logData = {
-                  id_user: id_user,
-                  id_simulation: id_simulation,
-                  id_server: null,
-                  id_connection: null,
-                  id_db: null,
-                  description: `El usuario ejecutó una simulación:
-                    Host = ${simulationDataBase.hostServer}, 
-                    Puerto = ${simulationDataBase.portConnection},
-                    Nombre Cola = ${simulationDataBase.nameQueue},
-                    Número de Teléfono = ${storeData.phone_number},
-                    Código Corto = ${storeData.short_code}`
-                };
 
-                console.log('🟢 Log listo para enviar:', logData);
-                await lastValueFrom(this.apiService.storeLogs(logData));
-                console.log('✅ Log guardado correctamente');
-              }
-            } catch (logError) {
-              console.error('❌ Error al guardar log:', logError);
-            }
+
+
+
+
+
+            // // Obtener usuario actual
+            // const currentUser = this.authService.getUser();
+            // if (!currentUser) {
+            //   this.authService.logout();
+            //   failedSimulations++;
+            //   continue;
+            // }
+
+            // // Crear log
+            // try {
+            //   const users = await lastValueFrom(this.apiService.getUsers());
+            //   const matchedUser = users.find((u: any) => u.name === currentUser.name);
+
+            //   if (matchedUser) {
+            //     const id_user = matchedUser.id;
+            //     const logData = {
+            //       id_user: id_user,
+            //       id_simulation: id_simulation,
+            //       id_server: null,
+            //       id_connection: null,
+            //       id_db: null,
+            //       description: `El usuario ejecutó una simulación:
+            //         Host = ${simulationDataBase.hostServer}, 
+            //         Puerto = ${simulationDataBase.portConnection},
+            //         Nombre Cola = ${simulationDataBase.nameQueue},
+            //         Número de Teléfono = ${simulationData.phoneNumber},
+            //         Código Corto = ${simulationData.shortCode}`
+            //     };
+
+            //     console.log('🟢 Log listo para enviar:', logData);
+            //     await lastValueFrom(this.apiService.storeLogs(logData));
+            //     console.log('✅ Log guardado correctamente');
+            //   }
+            // } catch (logError) {
+            //   console.error('❌ Error al guardar log:', logError);
+            // }
+
+
+
+
+
+
+
+
+
 
             successfulSimulations++;
 
@@ -450,13 +482,13 @@ export class TestingComponent implements OnInit {
             failedSimulations++;
           }
 
-          // Pequeña pausa entre requests para evitar sobrecarga
+          // Pequeña pausa entre requests
           if (index < this.phoneNumbers.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
 
-        // Mostrar resultado final
+        // Resultado final
         if (failedSimulations === 0) {
           this.showAlert('success', `✅ Todas las ${successfulSimulations} simulaciones se completaron exitosamente.`);
         } else {
@@ -465,50 +497,45 @@ export class TestingComponent implements OnInit {
 
         this.resetForm();
 
-      // 🔹 SIMULACIÓN DE REUSO
+        // 🔹 SIMULACIÓN DE REUSO
       } else if (this.showReusoFields) {
-        const simulationData: any = { ...simulationDataBase };
-        const storeData: any = { ...storeSimulation };
-
-        simulationData.systemID = this.systemId;
-        simulationData.password = this.password;
-        simulationData.phoneNumber = this.numeroTelefono;
-        simulationData.message = this.mensaje;
-        simulationData.number = this.cantidadReuso;
-        simulationData.shortCode = Number(this.sc);
-        simulationData.encoding = this.encoding;
-
-        storeData.system_id = this.systemId;
-        storeData.password = this.password;
-        storeData.phone_number = this.numeroTelefono;
-        storeData.message = this.mensaje;
-        storeData.number = this.cantidadReuso;
-        storeData.short_code = Number(this.sc);
-        storeData.encoding = this.encoding;
-        storeData.id_db = dbId;
+        const simulationData: any = {
+          ...simulationDataBase,
+          systemID: this.systemId,
+          password: this.password,
+          phoneNumber: this.numeroTelefono,
+          message: this.mensaje,
+          number: this.cantidadReuso,
+          shortCode: Number(this.sc),
+          encoding: this.encoding,
+          id_user: matchedUser ? matchedUser.id : null,
+          description: `El usuario ejecutó una simulación:
+                    Host = ${simulationDataBase.hostServer || 'Desconocido'}, 
+                    Puerto = ${simulationDataBase.portConnection || 'Desconocido'},
+                    Nombre Cola = ${simulationDataBase.nameQueue || 'Desconocido'},
+                    Número de Teléfono = ${this.numeroTelefono || 'Desconocido'},
+                    Short Code = ${Number(this.sc) || 'Desconocido'}`,
+        };
 
         console.log('🚀 Enviando simulación de reuso');
 
         try {
           const res = await lastValueFrom(this.apiService.sendSimulation(simulationData));
-          console.log('✅ Simulación de reuso enviada con éxito:', res);
+          console.log('✅ Simulación de reuso enviada y almacenada:', res);
 
-          const r = await lastValueFrom(this.apiService.storeSimulation(storeData));
-          console.log('📦 Simulación almacenada:', r);
-
-          const id_simulation = r?.id_simulation;
+          const id_simulation = res?.id_simulation;
           console.log('🆕 ID de simulación generado:', id_simulation);
 
           if (!id_simulation) {
             throw new Error('No se pudo obtener el ID de la simulación');
           }
 
-          // Obtener usuario actual y crear log
+          // Crear log
           const currentUser = this.authService.getUser();
           if (currentUser) {
             const users = await lastValueFrom(this.apiService.getUsers());
             const matchedUser = users.find((u: any) => u.name === currentUser.name);
-            
+
             if (matchedUser) {
               const id_user = matchedUser.id;
               const logData = {
@@ -521,8 +548,8 @@ export class TestingComponent implements OnInit {
                   Host = ${simulationDataBase.hostServer}, 
                   Puerto = ${simulationDataBase.portConnection},
                   Nombre Cola = ${simulationDataBase.nameQueue},
-                  Número de Teléfono = ${storeData.phone_number},
-                  Código Corto = ${storeData.short_code}`
+                  Número de Teléfono = ${simulationData.phoneNumber},
+                  Código Corto = ${simulationData.shortCode}`
               };
 
               await lastValueFrom(this.apiService.storeLogs(logData));
@@ -546,4 +573,6 @@ export class TestingComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
+
+
 }

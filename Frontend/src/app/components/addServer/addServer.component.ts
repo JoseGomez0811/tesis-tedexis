@@ -3,6 +3,7 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-addServer',
@@ -16,6 +17,8 @@ export class AddServerComponent {
 
   users: any = null;
   server: any = null;
+
+  isSubmitting = false;
 
   googleUserData = {
     fullName: '',
@@ -46,12 +49,34 @@ export class AddServerComponent {
     }, 4000);
   }
 
-  onSubmit(event: Event) {
+  async onSubmit(event: Event) {
     event.preventDefault();
+
+    const currentUser = this.authService.getUser();
+    let matchedUser: any = null;
+
+    if (currentUser && currentUser.name) {
+      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+      try {
+        const users = await lastValueFrom(this.apiService.getUsers());
+        // Varias APIs devuelven directamente un array o un objeto { data: [...] }
+        const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+        matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+      } catch (err) {
+        console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        // matchedUser permanecerá en null y el id_user será enviado como null.
+      }
+    } else {
+      console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      this.authService.logout();
+      this.isSubmitting = false;
+      return; // Salimos porque no hay usuario con el que asociar la acción
+    }
 
     const newServer = {
       name: this.nombre,
       url: this.ip,
+      id_user: matchedUser ? matchedUser.id : null,
     };
 
     this.apiService.addServer(newServer).subscribe({

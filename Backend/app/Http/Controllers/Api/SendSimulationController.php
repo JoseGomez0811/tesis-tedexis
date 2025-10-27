@@ -4,171 +4,168 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendSimulationRequest;
-// use App\Models\SendSimulation;
 use App\Http\Requests\StoreSimulationRequest;
+use App\Http\Requests\LogsRequest;
 use App\Models\StoreSimulation;
+use App\Models\Logs;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator; // ✅ <-- ESTA ES LA LÍNEA FALTANTE
 
 class SendSimulationController extends Controller
 {
     public function index()
     {
         $simulation = StoreSimulation::orderBy('id_simulation')->get([
-        'id_simulation',
-        'id_connection',
-        'nameQueue',
-        'system_id',
-        'password',
-        'phone_number',
-        'message',
-        'number',
-        'short_code',
-        'encoding',
-        'id_db',
-        'created_at',
-    ]);
+            'id_simulation',
+            'id_connection',
+            'nameQueue',
+            'system_id',
+            'password',
+            'phone_number',
+            'message',
+            'number',
+            'short_code',
+            'encoding',
+            'id_db',
+            'created_at',
+        ]);
         return response()->json($simulation);
     }
 
-    // public function send(SendSimulationRequest $request)
-    // {
-    //     // Obtener datos validados
-    //     $datos = $request->validated();
-
-    //     // (Opcional) Guardar en la base de datos local
-    //     // SendSimulation::create($datos);
-
-    //     // URL del web service en Java
-    //     $url = 'https://localhost:9000/receive-data'; // Reemplázala con la URL real
-
-    //     // Enviar los datos en JSON
-    //     $response = Http::post($url, $datos);
-
-    //     if ($response->successful()) {
-    //         return response()->json([
-    //             'message' => 'Datos enviados correctamente al web service.',
-    //             'respuesta_web_service' => $response->json()
-    //         ], 200);
-    //     }
-
-    //     return response()->json([
-    //         'message' => 'Error al enviar datos al web service.',
-    //         'error' => $response->body()
-    //     ], $response->status());
-    // }
-
-    public function send(SendSimulationRequest $request)
+    public function send(Request $request)
     {
-        try {
-            $datos = $request->validated();
+        // 1️⃣ Datos validados para envío al Web Service
+        $datos = $request->all();
 
-            Log::info("🎯 ENVÍO SÍNCRONO INICIADO", [
-                'phone_number' => $datos['phoneNumber'] ?? 'N/A',
-                'system_id' => $datos['systemID'] ?? 'N/A',
-                'timestamp' => now()->format('H:i:s.v')
-            ]);
+        $simData = [
+                'hostServer' => $datos['hostServer'] ?? null,
+                'portConnection' => $datos['portConnection'] ?? null,
+                'typeConnection' => $datos['typeConnection'] ?? null,
+                'nameQueue' => $datos['nameQueue'] ?? null,
+                'systemID' => $datos['systemID'] ?? null,
+                'password' => $datos['password'] ?? null,
+                'phoneNumber' => $datos['phoneNumber'] ?? null,
+                'message' => $datos['message'] ?? null,
+                'number' => $datos['number'] ?? null,
+                'shortCode' => $datos['shortCode'] ?? null,
+                'encoding' => $datos['encoding'] ?? null,
+                'created_at' => now(),
+            ];
 
-            $java_host_name = 'host.docker.internal';
-            $port = 9000;
-            $url = "http://{$java_host_name}:{$port}/receive-data";
+            // ✅ Validar con las reglas del StoreSimulationRequest
+            $simRequest = new SendSimulationRequest();
+            $validator = Validator::make($simData, $simRequest->rules());
 
-            // 🔥 Envío directo e inmediato - timeout corto para respuesta rápida
-            $response = Http::timeout(15) // 15 segundos máximo
-                            ->retry(2, 500) // 2 reintentos rápidos
-                            ->post($url, $datos);
-
-            if ($response->successful()) {
-                Log::info("✅ ENVÍO SÍNCRONO EXITOSO", [
-                    'phone_number' => $datos['phoneNumber'] ?? 'N/A',
-                    'response_time' => now()->format('H:i:s.v'),
-                    'web_service_status' => 'success'
-                ]);
-
+            if ($validator->fails()) {
                 return response()->json([
-                    'message' => 'Simulación enviada y confirmada exitosamente al Web Service.',
-                    'status' => 'success',
-                    'web_service_response' => $response->json(),
-                    'timestamp' => now()->toISOString()
-                ], 200);
-
-            } else {
-                Log::warning("⚠️ ENVÍO SÍNCRONO - WEB SERVICE ERROR", [
-                    'phone_number' => $datos['phoneNumber'] ?? 'N/A',
-                    'status_code' => $response->status(),
-                    'error_body' => substr($response->body(), 0, 200) // Solo primeros 200 chars
-                ]);
-
-                return response()->json([
-                    'message' => 'El Web Service respondió con error.',
-                    'status' => 'web_service_error',
-                    'error' => 'HTTP ' . $response->status(),
-                    'timestamp' => now()->toISOString()
-                ], 502);
+                    'message' => 'Error de validación al enviar simulación.',
+                    'errors' => $validator->errors(),
+                ], 422);
             }
 
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error("🔌 ERROR DE CONEXIÓN SÍNCRONO", [
-                'phone_number' => $datos['phoneNumber'] ?? 'N/A',
-                'error' => $e->getMessage(),
-                'timestamp' => now()->format('H:i:s.v')
-            ]);
+        // 2️⃣ URL del servicio Java (docker host)
+        $java_host_name = 'host.docker.internal';
+        $port = 9000;
+        $url = "http://{$java_host_name}:{$port}/receive-data";
 
-            return response()->json([
-                'message' => 'No se pudo conectar con el Web Service.',
-                'status' => 'connection_error',
-                'error' => $e->getMessage(),
-                'timestamp' => now()->toISOString()
-            ], 503);
-
-        } catch (\Throwable $e) {
-            Log::error("💥 ERROR CRÍTICO SÍNCRONO", [
-                'phone_number' => $datos['phoneNumber'] ?? 'N/A',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'message' => 'Error interno del servidor.',
-                'status' => 'internal_error',
-                'error' => $e->getMessage(),
-                'timestamp' => now()->toISOString()
-            ], 500);
-        }
-    }
-
-    public function store(StoreSimulationRequest $request)
-    {
         try {
-            $data = $request->validated();
+            // 3️⃣ Enviar datos al servicio Java
+            $response = Http::timeout(30)
+                ->retry(1, 1000, function ($exception, $request) {
+                    return !($exception instanceof ConnectionException);
+                })
+                ->post($url, $simData);
 
-            // Agregamos la fecha de creación explícitamente (por claridad)
-            $data['created_at'] = now();
+            if (!$response->successful()) {
+                return response()->json([
+                    'message' => '❌ El Web Service Java respondió con error.',
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ], $response->status());
+            }
 
-            // Crear la simulación
-            $simulation = StoreSimulation::create($data);
+            // 4️⃣ Si el envío fue exitoso, almacenar simulación
+            $storeData = [
+                'id_connection' => $datos['id_connection'] ?? null,
+                'nameQueue' => $datos['nameQueue'] ?? null,
+                'system_id' => $datos['systemID'] ?? null,
+                'password' => $datos['password'] ?? null,
+                'phone_number' => $datos['phoneNumber'] ?? null,
+                'message' => $datos['message'] ?? null,
+                'number' => $datos['number'] ?? null,
+                'short_code' => $datos['shortCode'] ?? null,
+                'encoding' => $datos['encoding'] ?? null,
+                'id_db' => $datos['id_db'] ?? null,
+                'created_at' => now(),
+            ];
 
+            // ✅ Validar con las reglas del StoreSimulationRequest
+            $storeRequest = new StoreSimulationRequest();
+            $validator = Validator::make($storeData, $storeRequest->rules());
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Error de validación al almacenar simulación.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            // Guardar en la base de datos
+            $simulation = StoreSimulation::create($storeData);
+
+            // 5️⃣ Si el envío fue exitoso, intentar crear un log asociado
+            $logData = [
+                'id_user' => $datos['id_user'] ?? null,
+                'id_simulation' => $simulation->id_simulation ?? null,
+                'id_server' => $datos['id_server'] ?? null,
+                'id_connection' => $datos['id_connection'] ?? null,
+                'id_db' => $datos['id_db'] ?? null,
+                'description' => $datos['description'] ?? null,
+                // 'description' => "El usuario ejecutó una simulación: Host = {$datos['hostServer']}, Puerto = {$datos['portConnection']}, Nombre Cola = {$datos['nameQueue']}, Número de Teléfono = {$datos['phoneNumber']}, Código Corto = {$datos['shortCode']}",
+                'created_at' => now(),
+            ];
+
+            // Validar y crear log solo si se envió id_user
+            if (!empty($logData['id_user'])) {
+                $logsRequest = new LogsRequest();
+                $validatorLog = Validator::make($logData, $logsRequest->rules());
+
+                if (!$validatorLog->fails()) {
+                    // crear registro de log
+                    Logs::create([
+                        'id_user' => $logData['id_user'],
+                        'id_server' => $logData['id_server'],
+                        'id_connection' => $logData['id_connection'],
+                        'id_db' => $logData['id_db'],
+                        'id_simulation' => $logData['id_simulation'],
+                        'description' => $logData['description'],
+                    ]);
+                }
+                //Si falla la validación del log, no abortamos el flujo principal
+            }
+
+            // 6️⃣ Responder al frontend con éxito y el ID de simulación
             return response()->json([
-                'message' => 'Simulación creada exitosamente.',
+                'message' => '✅ Simulación enviada y almacenada correctamente.',
                 'success' => true,
+                'service_url' => $url,
+                'id_simulation' => $simulation->id_simulation,
                 'data' => $simulation,
-                'id_simulation' => $simulation->id_simulation
-            ], 201);
+            ], 200);
 
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ConnectionException $e) {
             return response()->json([
-                'message' => 'Error de validación',
-                'errors' => $e->errors(),
-            ], 422);
+                'message' => 'Fallo de red al conectar con el Web Service Java.',
+                'error' => $e->getMessage(),
+            ], 503);
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error interno del servidor',
+                'message' => 'Error interno al procesar la simulación.',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
-
 }

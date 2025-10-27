@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
 import { Router } from '@angular/router';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
@@ -20,6 +21,8 @@ export class ProfileComponent implements OnInit {
   servers: any[] = [];
   selectedSimulation: any = null;
   users: any = null;
+
+  isSubmitting = false;
 
   filtroServidor: string = '';
   filtroFecha: string = '';
@@ -135,10 +138,31 @@ export class ProfileComponent implements OnInit {
 
   // 📨 Enviar simulación
   /** ✅ Guardar datos del perfil o usar la simulación seleccionada */
-  onSubmit(event: Event) {
+  async onSubmit(event: Event) {
     event.preventDefault();
 
     console.log('💾 Datos del perfil:', this.googleUserData);
+
+    const currentUser = this.authService.getUser();
+    let matchedUser: any = null;
+
+    if (currentUser && currentUser.name) {
+      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+      try {
+        const users = await lastValueFrom(this.apiService.getUsers());
+        // Varias APIs devuelven directamente un array o un objeto { data: [...] }
+        const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+        matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+      } catch (err) {
+        console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        // matchedUser permanecerá en null y el id_user será enviado como null.
+      }
+    } else {
+      console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      this.authService.logout();
+      this.isSubmitting = false;
+      return; // Salimos porque no hay usuario con el que asociar la acción
+    }
 
     const selectedConnection = this.connections.find(connection => connection.id_connection === this.selectedSimulation.id_connection);
     const selectedServer = this.servers.find(server => server.id_server === selectedConnection.id_server);
@@ -158,13 +182,23 @@ export class ProfileComponent implements OnInit {
         portConnection: connectionPort || 'Desconocido',
         typeConnection: connectionType || 'Desconocido',
         nameQueue: this.selectedSimulation.nameQueue || 'Desconocido',
+        id_connection: this.selectedSimulation.id_connection,
+        id_db: this.selectedSimulation.id_db,
         systemID: this.selectedSimulation.system_id || 'Desconocido',
         password: this.selectedSimulation.password || 'Desconocido',
         phoneNumber: this.selectedSimulation.phone_number || 'Desconocido',
         message: this.selectedSimulation.message || 'Desconocido',
         number: this.selectedSimulation.number || 'Desconocido',
         shortCode: this.selectedSimulation.short_code || 'Desconocido',
-        encoding: this.selectedSimulation.encoding || 'Desconocido'
+        encoding: this.selectedSimulation.encoding || 'Desconocido',
+        id_user: matchedUser ? matchedUser.id : null,
+        description: `El usuario ejecutó una simulación:
+                    Host = ${serverUrl || 'Desconocido'}, 
+                    Puerto = ${connectionPort || 'Desconocido'},
+                    Nombre Cola = ${this.selectedSimulation.nameQueue || 'Desconocido'},
+                    Número de Teléfono = ${this.selectedSimulation.phone_number || 'Desconocido'},
+                    Short Code = ${this.selectedSimulation.short_code || 'Desconocido'}`,
+        
       }
 
       this.apiService.sendSimulation(simulationData).subscribe({
@@ -179,53 +213,75 @@ export class ProfileComponent implements OnInit {
           const id_simulation = this.selectedSimulation.id_simulation;
           console.log('🆔 ID de la simulación para logs:', id_simulation);
 
-          const currentUser = this.authService.getUser();
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          // const currentUser = this.authService.getUser();
 
-          if (currentUser) {
-            this.users = currentUser;
-            this.googleUserData = {
-              fullName: currentUser.name || '',
-              email: currentUser.email || '',
-              picture: currentUser.avatar || '',
-              accessLevel: 'Usuario',
-            };
-          } else {
-            this.authService.logout();
-            return;
-          }
+          // if (currentUser) {
+          //   this.users = currentUser;
+          //   this.googleUserData = {
+          //     fullName: currentUser.name || '',
+          //     email: currentUser.email || '',
+          //     picture: currentUser.avatar || '',
+          //     accessLevel: 'Usuario',
+          //   };
+          // } else {
+          //   this.authService.logout();
+          //   return;
+          // }
 
-          this.apiService.getUsers().subscribe({
-            next: (users: any[]) => {
-              const matchedUser = users.find(u => u.name === this.googleUserData.fullName);
-              if (matchedUser) {
-                const id_user = matchedUser.id;
+          // this.apiService.getUsers().subscribe({
+          //   next: (users: any[]) => {
+          //     const matchedUser = users.find(u => u.name === this.googleUserData.fullName);
+          //     if (matchedUser) {
+          //       const id_user = matchedUser.id;
 
-                const logData = {
-                  id_user: id_user,
-                  id_simulation: id_simulation, // ✅ ya lo tienes
-                  id_server: null,
-                  id_connection: null,
-                  id_db: null,
-                  description: `El usuario ejecutó una simulación:
-                    Host = ${simulationData.hostServer}, 
-                    Puerto = ${simulationData.portConnection},
-                    Nombre Cola = ${simulationData.nameQueue},
-                    Número de Teléfono = ${simulationData.phoneNumber},
-                    Short Code = ${simulationData.shortCode}`
-                };
+          //       const logData = {
+          //         id_user: id_user,
+          //         id_simulation: id_simulation, // ✅ ya lo tienes
+          //         id_server: null,
+          //         id_connection: null,
+          //         id_db: null,
+          //         description: `El usuario ejecutó una simulación:
+          //           Host = ${simulationData.hostServer}, 
+          //           Puerto = ${simulationData.portConnection},
+          //           Nombre Cola = ${simulationData.nameQueue},
+          //           Número de Teléfono = ${simulationData.phoneNumber},
+          //           Short Code = ${simulationData.shortCode}`
+          //       };
 
-                console.log('🟢 Log listo para enviar:', logData);
+          //       console.log('🟢 Log listo para enviar:', logData);
 
-                this.apiService.storeLogs(logData).subscribe({
-                  next: (res) => console.log('✅ Log guardado correctamente:', res),
-                  error: (err) => console.error('❌ Error al guardar log:', err),
-                });
-              } else {
-                console.warn('⚠️ No se encontró el usuario en la base de datos');
-              }
-            },
-            error: (err) => console.error('❌ Error al obtener usuarios:', err),
-          });
+          //       this.apiService.storeLogs(logData).subscribe({
+          //         next: (res) => console.log('✅ Log guardado correctamente:', res),
+          //         error: (err) => console.error('❌ Error al guardar log:', err),
+          //       });
+          //     } else {
+          //       console.warn('⚠️ No se encontró el usuario en la base de datos');
+          //     }
+          //   },
+          //   error: (err) => console.error('❌ Error al obtener usuarios:', err),
+          // });
+
+
+
+
+
+
+
+
+
+
+
+
         },
         error: (err) => {
           this.showAlert('error','❌ Error de red enviando simulación');

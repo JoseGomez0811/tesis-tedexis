@@ -18,6 +18,8 @@ class SendSimulationRequest extends FormRequest
             'portConnection' => 'required|integer', 
             'typeConnection' => 'required|string',
             'nameQueue' => 'nullable|string|max:255', 
+            // 'id_connection' => 'required|exists:connections,id_connection',
+            // 'id_db' => 'nullable|exists:database_connections,id',
             'systemID' => 'required|string|max:255',
             'password' => 'nullable|string|max:255', 
             'phoneNumber' => 'required|string|max:255',
