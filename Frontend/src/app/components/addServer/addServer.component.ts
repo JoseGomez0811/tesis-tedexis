@@ -7,23 +7,19 @@ import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-addServer',
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './addServer.component.html',
-  styleUrl: './addServer.component.css'
+  styleUrls: ['./addServer.component.css']
 })
 export class AddServerComponent {
   nombre = '';
   ip = '';
 
-  users: any = null;
-  server: any = null;
-
+  servers: any[] = [];
+  showForm = false;
+  editingId: number | null = null; // <-- Si no es null, estamos en modo edición
   isSubmitting = false;
-
-  googleUserData = {
-    fullName: '',
-    email: '',
-  };
 
   alertVisible = false;
   alertType: 'success' | 'error' | null = null;
@@ -34,6 +30,9 @@ export class AddServerComponent {
     private authService: AuthService
   ) {}
 
+  // ==============================
+  //         ALERTAS
+  // ==============================
   closeAlert() {
     this.alertVisible = false;
   }
@@ -42,127 +41,179 @@ export class AddServerComponent {
     this.alertType = type;
     this.alertMessage = message;
     this.alertVisible = true;
-
-    // Se oculta con una pequeña transición
-    setTimeout(() => {
-      this.alertVisible = false;
-    }, 4000);
+    setTimeout(() => (this.alertVisible = false), 4000);
   }
 
-  async onSubmit(event: Event) {
-    event.preventDefault();
+  // ==============================
+  //       INICIALIZACIÓN
+  // ==============================
+  ngOnInit() {
+    this.loadServers();
+  }
 
+  toggleForm() {
+    this.showForm = !this.showForm;
+    if (!this.showForm) this.cancelEdit();
+  }
+
+  // ==============================
+  //          CRUD
+  // ==============================
+  loadServers() {
+    this.apiService.getServers().subscribe({
+      next: (data: any) => {
+        this.servers = Array.isArray(data) ? data : (data.data ?? []);
+      },
+      error: (err) => console.error('❌ Error al cargar servidores:', err)
+    });
+  }
+
+  resetForm() {
+    this.nombre = '';
+    this.ip = '';
+    this.editingId = null;
+    this.showForm = false;
+  }
+
+  startEdit(server: any) {
+    this.showForm = true;
+    this.editingId = server.id_server; // 👈 usa la clave real
+    this.nombre = server.name;
+    this.ip = server.url;
+  }
+
+  cancelEdit() {
+    this.resetForm();
+  }
+
+  confirmDelete(id: number) {
+    if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
+    this.deleteServer(id);
+  }
+
+  async deleteServer(id: number) {
     const currentUser = this.authService.getUser();
     let matchedUser: any = null;
 
     if (currentUser && currentUser.name) {
       console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+
       try {
         const users = await lastValueFrom(this.apiService.getUsers());
-        // Varias APIs devuelven directamente un array o un objeto { data: [...] }
-        const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
-        matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+        // Soportar tanto respuesta directa como { data: [...] }
+        const usersArray = Array.isArray(users)
+          ? users
+          : users && Array.isArray(users.data)
+          ? users.data
+          : [];
+
+        matchedUser = usersArray.find((u: any) => u?.name === currentUser.name) ?? null;
       } catch (err) {
         console.error('❌ Error obteniendo usuarios para emparejar:', err);
-        // matchedUser permanecerá en null y el id_user será enviado como null.
+        // No interrumpimos el flujo si no se pudo emparejar
+        matchedUser = null;
       }
     } else {
-      console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      console.warn('⚠️ No hay usuario autenticado. Cerrando sesión.');
       this.authService.logout();
-      this.isSubmitting = false;
-      return; // Salimos porque no hay usuario con el que asociar la acción
+      return;
     }
 
-    const newServer = {
+    const id_user = matchedUser ? matchedUser.id : null;
+
+    // Confirmación antes de eliminar
+    // if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
+
+    this.apiService.deleteServer(id, id_user).subscribe({
+      next: () => {
+        this.showAlert('success', 'Servidor eliminado con éxito ✅');
+        this.loadServers();
+      },
+      error: (err) => {
+        console.error('❌ Error al eliminar servidor:', err);
+        this.showAlert('error', 'Error al eliminar servidor');
+      }
+    });
+  }
+
+  // ==============================
+  //        GUARDAR / EDITAR
+  // ==============================
+  async onSubmit(event: Event) {
+    event.preventDefault();
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+
+    if (!this.nombre || !this.ip) {
+      this.showAlert('error', 'Por favor completa todos los campos obligatorios');
+      this.isSubmitting = false;
+      return;
+    }
+
+    const currentUser = this.authService.getUser();
+        let matchedUser: any = null;
+    
+        if (currentUser && currentUser.name) {
+          console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+          try {
+            const users = await lastValueFrom(this.apiService.getUsers());
+            // Varias APIs devuelven directamente un array o un objeto { data: [...] }
+            const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+            matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+          } catch (err) {
+            console.error('❌ Error obteniendo usuarios para emparejar:', err);
+            // No bloqueamos todo el proceso por un fallo al obtener la lista de usuarios;
+            // matchedUser permanecerá en null y el id_user será enviado como null.
+          }
+        } else {
+          console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+          this.authService.logout();
+          this.isSubmitting = false;
+          return; // Salimos porque no hay usuario con el que asociar la acción
+        }
+
+    const payload = {
       name: this.nombre,
       url: this.ip,
       id_user: matchedUser ? matchedUser.id : null,
     };
 
-    this.apiService.addServer(newServer).subscribe({
-      next: res => {
-        this.showAlert('success','Servidor añadido con éxito ✅');
-        console.log(res);
-        this.nombre = '';
-        this.ip = '';
-
-        const currentUser = this.authService.getUser();
-
-        if (currentUser) {
-          this.users = currentUser;
-          this.googleUserData = {
-            fullName: currentUser.name || '',
-            email: currentUser.email || '',
-          };
-        } else {
-          this.authService.logout();
-          return; // Detiene la ejecución si no hay usuario
-        }
-
-        // 🔹 Obtenemos la lista de usuarios desde la API
-        this.apiService.getUsers().subscribe({
-          next: (users: any[]) => {
-            // Busca el usuario cuyo nombre coincida con el usuario actual
-            const matchedUser = users.find(
-              (u) => u.name === this.googleUserData.fullName
-            );
-
-            if (matchedUser) {
-              const id_user = matchedUser.id;
-              
-              this.apiService.getServers().subscribe({
-                next: (server: any[]) => {
-                  // Busca el usuario cuyo nombre coincida con el usuario actual
-                  const matchedServer = server.find(
-                    (s) => s.name === newServer.name
-                  );
-
-                  if (matchedServer) {
-                    const id_server = matchedServer.id; // ✅ Guardamos el id del usuario
-                    // Creamos el log con el id encontrado
-                    const logData = {
-                      id_user: id_user,
-                      id_server: id_server || null,
-                      id_connection: null,
-                      id_db: null,
-                      id_simulation: null,
-                      description: `Se agregó un nuevo servidor: 
-                        Nombre = ${newServer.name}, 
-                        Host = ${newServer.url}`,
-                    };
-
-
-                    console.log('🟢 Log listo para enviar:', logData);
-
-                    // ✅ Enviar los logs al backend
-                    this.apiService.storeLogs(logData).subscribe({
-                      next: (res) => console.log('✅ Log guardado correctamente:', res),
-                      error: (err) => console.error('❌ Error al guardar log:', err),
-                    });
-                  
-                  } else {
-                    console.warn('⚠️ No se encontró el id de la base de datos');
-                  }
-                },
-                error: (err) => {
-                  console.error('❌ Error al obtener el id de la base de datos:', err);
-                },
-              });
-
-              
-            } else {
-              console.warn('⚠️ No se encontró el usuario en la base de datos');
-            }
+    try {
+      if (this.editingId) {
+        // MODO EDICIÓN
+        this.apiService.updateServer(this.editingId, payload).subscribe({
+          next: () => {
+            this.showAlert('success', 'Servidor actualizado con éxito');
+            this.resetForm();
+            this.loadServers();
+            this.isSubmitting = false;
           },
           error: (err) => {
-            console.error('❌ Error al obtener usuarios:', err);
-          },
+            console.error('❌ Error al actualizar servidor:', err);
+            this.showAlert('error', 'Error al actualizar servidor');
+            this.isSubmitting = false;
+          }
         });
-      },
-      error: err => {
-        this.showAlert('error','Error al añadir servidor ❌');
-        console.error(err);
+      } else {
+        // MODO CREAR
+        this.apiService.addServer(payload).subscribe({
+          next: () => {
+            this.showAlert('success', 'Servidor registrado con éxito ✅');
+            this.resetForm();
+            this.loadServers();
+            this.isSubmitting = false;
+          },
+          error: (err) => {
+            console.error('❌ Error al registrar servidor:', err);
+            this.showAlert('error', 'Error al registrar servidor');
+            this.isSubmitting = false;
+          }
+        });
       }
-    });
+    } catch (err) {
+      console.error('❌ onSubmit error:', err);
+      this.showAlert('error', 'Ocurrió un error inesperado');
+      this.isSubmitting = false;
+    }
   }
 }

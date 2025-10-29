@@ -20,6 +20,9 @@ export class AddConnectionComponent implements OnInit{
   users: any = null;
   connection: any = null;
 
+  connections: any[] = [];
+  showForm = false;
+  editingId: number | null = null; // <-- Si no es null, estamos en modo edición
   isSubmitting = false;
 
   googleUserData = {
@@ -36,6 +39,9 @@ export class AddConnectionComponent implements OnInit{
     private authService: AuthService
   ) {}
 
+  // ==============================
+  //         ALERTAS
+  // ==============================
   closeAlert() {
     this.alertVisible = false;
   }
@@ -44,16 +50,132 @@ export class AddConnectionComponent implements OnInit{
     this.alertType = type;
     this.alertMessage = message;
     this.alertVisible = true;
-
-    // Se oculta con una pequeña transición
-    setTimeout(() => {
-      this.alertVisible = false;
-    }, 4000);
+    setTimeout(() => (this.alertVisible = false), 4000);
   }
 
+  // ==============================
+  //       INICIALIZACIÓN
+  // ==============================
+  ngOnInit() {
+    this.loadServers();
+    this.loadConnections();
+  }
+
+  toggleForm() {
+    this.showForm = !this.showForm;
+    if (!this.showForm) this.cancelEdit();
+  }
+
+  // ==============================
+  //          CRUD
+  // ==============================
+  loadServers() {
+    this.apiService.getServers().subscribe({
+      next: (data: any) => {
+        this.servers = Array.isArray(data) ? data : (data.data ?? []);
+      },
+      error: (err) => console.error('❌ Error al cargar servidores:', err)
+    });
+  }
+
+  loadConnections() {
+    this.apiService.getConnection().subscribe({
+      next: (data: any) => {
+        this.connections = Array.isArray(data) ? data : (data.data ?? []);
+      },
+      error: (err) => console.error('❌ Error al cargar conexiones:', err)
+    });
+  }
+
+  resetForm() {
+    this.selectedServer = '';
+    this.puerto = '';
+    this.nombre = '';
+    this.conexion = '';
+    this.editingId = null;
+    this.showForm = false;
+  }
+
+  startEdit(connection: any) {
+    this.showForm = true;
+    this.editingId = connection.id_connection; // 👈 usa la clave real
+    this.selectedServer = connection.id_server;
+    this.puerto = connection.port;
+    this.nombre = connection.name;
+    this.conexion = connection.type;
+  }
+
+  cancelEdit() {
+    this.resetForm();
+  }
+
+  confirmDelete(id: number) {
+    if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
+    this.deleteServer(id);
+  }
+
+  async deleteServer(id: number) {
+    const currentUser = this.authService.getUser();
+    let matchedUser: any = null;
+
+    if (currentUser && currentUser.name) {
+      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+
+      try {
+        const users = await lastValueFrom(this.apiService.getUsers());
+        // Soportar tanto respuesta directa como { data: [...] }
+        const usersArray = Array.isArray(users)
+          ? users
+          : users && Array.isArray(users.data)
+          ? users.data
+          : [];
+
+        matchedUser = usersArray.find((u: any) => u?.name === currentUser.name) ?? null;
+      } catch (err) {
+        console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        // No interrumpimos el flujo si no se pudo emparejar
+        matchedUser = null;
+      }
+    } else {
+      console.warn('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      this.authService.logout();
+      return;
+    }
+
+    const id_user = matchedUser ? matchedUser.id : null;
+
+    // Confirmación antes de eliminar
+    // if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
+
+    this.apiService.deleteConnection(id, id_user).subscribe({
+      next: () => {
+        this.showAlert('success', 'Conexión eliminada con éxito ✅');
+        this.loadConnections();
+      },
+      error: (err) => {
+        console.error('❌ Error al eliminar conexión:', err);
+        this.showAlert('error', 'Error al eliminar conexión');
+      }
+    });
+  }
+
+  // ==============================
+  //        GUARDAR / EDITAR
+  // ==============================
   async onSubmit(event: Event) {
     event.preventDefault();
-    const id_server = this.servers.find(server => server.name === this.selectedServer)?.id_server ?? null;
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+
+    if (!this.nombre || !this.conexion || !this.selectedServer || !this.puerto) {
+      this.showAlert('error', 'Por favor completa todos los campos obligatorios');
+      this.isSubmitting = false;
+      return;
+    }
+
+    // const id_server = this.servers.find(server => server.name === this.selectedServer)?.id_server ?? null;
+    const id_server = this.selectedServer ? Number(this.selectedServer) : null;
+
 
     const currentUser = this.authService.getUser();
     let matchedUser: any = null;
@@ -76,133 +198,61 @@ export class AddConnectionComponent implements OnInit{
       return; // Salimos porque no hay usuario con el que asociar la acción
     }
 
-    const newConnection = {
-      //server: this.selectedServer,
+    const payload = {
       name: this.nombre,
       type: this.conexion,
       port: this.puerto ? parseInt(this.puerto, 10) : null,
-      path: undefined, // Si tienes un campo path opcional, puedes dejarlo así o eliminarlo si no lo usas
+      path: null, // Si tienes un campo path opcional, puedes dejarlo así o eliminarlo si no lo usas
       id_server: id_server,
       id_user: matchedUser ? matchedUser.id : null,
     };
 
-    this.apiService.addConnection(newConnection).subscribe({
-      next: res => {
-        this.showAlert('success', 'Conexión añadida con éxito ✅');
-        console.log(res);
-        this.selectedServer = '';
-        this.nombre = '';
-        this.puerto = '';
-        this.conexion = '';
-
-
-
-
-
-
-
-
-        // const currentUser = this.authService.getUser();
-
-        // if (currentUser) {
-        //   this.users = currentUser;
-        //   this.googleUserData = {
-        //     fullName: currentUser.name || '',
-        //     email: currentUser.email || '',
-        //   };
-        // } else {
-        //   this.authService.logout();
-        //   return; // Detiene la ejecución si no hay usuario
-        // }
-
-        // // 🔹 Obtenemos la lista de usuarios desde la API
-        // this.apiService.getUsers().subscribe({
-        //   next: (users: any[]) => {
-        //     // Busca el usuario cuyo nombre coincida con el usuario actual
-        //     const matchedUser = users.find(
-        //       (u) => u.name === this.googleUserData.fullName
-        //     );
-
-        //     if (matchedUser) {
-        //       const id_user = matchedUser.id;
-              
-        //       this.apiService.getConnection().subscribe({
-        //         next: (connection: any[]) => {
-        //           // Busca el usuario cuyo nombre coincida con el usuario actual
-        //           const matchedConnection = connection.find(
-        //             (c) => c.name === newConnection.name
-        //           );
-
-        //           if (matchedConnection) {
-        //             const id_connection = matchedConnection.id_connection; // ✅ Guardamos el id del usuario
-        //             // Creamos el log con el id encontrado
-        //             const logData = {
-        //               id_user: id_user,
-        //               id_server: null,
-        //               id_connection: id_connection || null,
-        //               id_db:  null,
-        //               id_simulation: null,
-        //               description: `Se agregó una nueva conexión: 
-        //                 Nombre = ${newConnection.name},
-        //                 Tipo = ${newConnection.type},
-        //                 Puerto = ${newConnection.port}`, 
-        //             };
-
-
-        //             console.log('🟢 Log listo para enviar:', logData);
-
-        //             // ✅ Enviar los logs al backend
-        //             this.apiService.storeLogs(logData).subscribe({
-        //               next: (res) => console.log('✅ Log guardado correctamente:', res),
-        //               error: (err) => console.error('❌ Error al guardar log:', err),
-        //             });
-
-        //           } else {
-        //             console.warn('⚠️ No se encontró el id de la base de datos');
-        //           }
-        //         },
-        //         error: (err) => {
-        //           console.error('❌ Error al obtener el id de la base de datos:', err);
-        //         },
-        //       });
-
-              
-        //     } else {
-        //       console.warn('⚠️ No se encontró el usuario en la base de datos');
-        //     }
-        //   },
-        //   error: (err) => {
-        //     console.error('❌ Error al obtener usuarios:', err);
-        //   },
-        // });
-
-
-
-
-
-
-
-
-
-
-
-      },
-      error: err => {
-        this.showAlert('error', 'Error al añadir conexión ❌');
-        console.log(this.conexion)
-        console.log(id_server)
-        console.error(err);
+    try {
+      if (this.editingId) {
+        // MODO EDICIÓN
+        this.apiService.updateConnection(this.editingId, payload).subscribe({
+          next: () => {
+            this.showAlert('success', 'Conexión actualizada con éxito');
+            this.resetForm();
+            this.loadConnections();
+            this.isSubmitting = false;
+          },
+          error: (err) => {
+            console.error('❌ Error al actualizar conexion:', err);
+            this.showAlert('error', 'Error al actualizar conexión');
+            this.isSubmitting = false;
+          }
+        });
+      } else {
+        // MODO CREAR
+        this.apiService.addConnection(payload).subscribe({
+          next: () => {
+            this.showAlert('success', 'Conexión registrada con éxito ✅');
+            this.resetForm();
+            this.loadConnections();
+            this.isSubmitting = false;
+          },
+          error: (err) => {
+            console.error('❌ Error al registrar conexión:', err);
+            this.showAlert('error', 'Error al registrar conexión');
+            this.isSubmitting = false;
+          }
+        });
       }
-    });
+    } catch (err) {
+      console.error('❌ onSubmit error:', err);
+      this.showAlert('error', 'Ocurrió un error inesperado');
+      this.isSubmitting = false;
+    }
   }
 
-  ngOnInit(): void {
-    this.apiService.getServers().subscribe({
-      next: (res: any) => {
-        console.log('Servidores recibidos:', res);
-        this.servers = Array.isArray(res) ? res : res.data ?? [];
-      },
-      error: err => console.error('Error cargando servidores:', err)
-    });
-  }
+  // ngOnInit(): void {
+  //   this.apiService.getServers().subscribe({
+  //     next: (res: any) => {
+  //       console.log('Servidores recibidos:', res);
+  //       this.servers = Array.isArray(res) ? res : res.data ?? [];
+  //     },
+  //     error: err => console.error('Error cargando servidores:', err)
+  //   });
+  // }
 }

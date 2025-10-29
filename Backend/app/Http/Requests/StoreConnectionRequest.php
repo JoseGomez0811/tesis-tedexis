@@ -11,7 +11,7 @@ class StoreConnectionRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|string|max:191|unique:connections,name',
+            'name' => 'required|string|max:191',
             'type' => 'required|string|max:255',
             'port' => 'required|integer|min:1|max:65535',
             'path' => 'nullable|string|max:255',

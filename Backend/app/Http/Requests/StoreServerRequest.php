@@ -11,7 +11,8 @@ class StoreServerRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|string|max:191|unique:servers,name',
+            // 'name' => 'required|string|max:191|unique:servers,name',
+            'name' => 'required|string|max:191',
             'url'  => 'required|string|max:255'
         ];
     }

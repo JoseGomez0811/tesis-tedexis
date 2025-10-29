@@ -16,11 +16,15 @@ Route::prefix('v1')->group(function () {
     Route::get('servers', [ServerController::class, 'index']);
     Route::post('servers', [ServerController::class, 'store']);
     Route::get('servers/{id}', [ServerController::class, 'show']);
+    Route::put('servers/{id}', [ServerController::class, 'update']);
+    Route::delete('servers/{id}', [ServerController::class, 'destroy']);
 
     // --- CONNECTIONS ---
     Route::get('connections', [ConnectionController::class, 'index']);
     Route::post('connections', [ConnectionController::class, 'store']);
     Route::get('connections/{id}', [ConnectionController::class, 'show']);
+    Route::put('connections/{id}', [ConnectionController::class, 'update']);
+    Route::delete('connections/{id}', [ConnectionController::class, 'destroy']);
 
     // --- DATABASE CONNECTIONS ---
     Route::get('databases', [DatabaseConnectionController::class, 'index']);

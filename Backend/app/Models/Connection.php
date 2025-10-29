@@ -17,4 +17,10 @@ class Connection extends Model
         'path',
         'id_server'
     ];
+
+    // ✅ Relación con el servidor
+    public function server()
+    {
+        return $this->belongsTo(Server::class, 'id_server', 'id_server');
+    }
 }

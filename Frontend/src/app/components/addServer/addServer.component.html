@@ -1,83 +1,135 @@
-<div class="max-w-4xl mx-auto p-6 bg-white">
-    <!-- ✅ Alerta tipo TOAST -->
-    <div
-        *ngIf="alertVisible"
-        [ngClass]="{
-        'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
-        'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
-        }"
-        class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
-        [class.opacity-100]="alertVisible"
-        [class.opacity-0]="!alertVisible"
-        role="alert"
+<div class="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow">
+  <!-- ✅ ALERTA TOAST -->
+  <div
+    *ngIf="alertVisible"
+    [ngClass]="{
+      'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
+      'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
+    }"
+    class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
+    [class.opacity-100]="alertVisible"
+    [class.opacity-0]="!alertVisible"
+    role="alert"
+  >
+    <div class="flex justify-between items-start">
+      <div>
+        <p class="font-bold">
+          {{ alertType === 'success' ? 'Éxito' : 'Error' }}
+        </p>
+        <p>{{ alertMessage }}</p>
+      </div>
+      <button (click)="closeAlert()" class="text-gray-500 hover:text-gray-700 ml-4">
+        ✖
+      </button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="flex justify-between items-center mb-8">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900 mb-2">Servidores</h1>
+      <p class="text-gray-600">Gestiona los servidores registrados</p>
+    </div>
+    <button
+      (click)="toggleForm()"
+      class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
     >
-        <div class="flex justify-between items-start">
+      <span class="text-lg mr-2">＋</span> Añadir
+    </button>
+  </div>
+
+  <!-- ✅ FORMULARIO -->
+  <form *ngIf="showForm" class="space-y-8 border-t border-gray-200 pt-6" (ngSubmit)="onSubmit($event)">
+    <div class="bg-gray-50 rounded-lg p-6">
+      <h2 class="text-xl font-medium text-gray-900 mb-2">
+        {{ editingId ? 'Editar Servidor' : 'Nuevo Servidor' }}
+      </h2>
+      <p class="text-gray-600 mb-6">Ingrese los parámetros del servidor</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-            <p class="font-bold">
-            {{ alertType === 'success' ? 'Éxito' : 'Error' }}
-            </p>
-            <p>{{ alertMessage }}</p>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+          <input
+            type="text"
+            [(ngModel)]="nombre"
+            name="nombre"
+            class="w-full px-3 py-2 border rounded-md"
+            placeholder="Servidor Calidad"
+            required
+          />
         </div>
 
-        <!-- Botón para cerrar manualmente -->
-        <button
-            (click)="closeAlert()"
-            class="text-gray-500 hover:text-gray-700 ml-4"
-        >
-            ✖
-        </button>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Dirección IP / Host</label>
+          <input
+            type="text"
+            [(ngModel)]="ip"
+            name="ip"
+            class="w-full px-3 py-2 border rounded-md"
+            placeholder="10.10.25.63"
+            required
+          />
         </div>
+      </div>
     </div>
-    <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-semibold text-gray-900 mb-2">Añadir Servidor</h1>
-        <p class="text-gray-600">Configura los parámetros de tu servidor</p>
+
+    <div class="flex justify-end">
+      <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+        {{ editingId ? 'Actualizar' : 'Guardar' }}
+      </button>
+    </div>
+  </form>
+
+  <!-- ✅ TABLA DE SERVIDORES -->
+  <div class="mt-10 border border-gray-200 rounded-xl overflow-hidden shadow-inner">
+    <div class="overflow-x-auto overflow-y-auto max-h-96">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-100 sticky top-0 shadow-sm">
+          <tr>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Nombre</th>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">Host</th>
+            <th class="px-6 py-3 text-center font-bold text-gray-600 uppercase">Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr *ngFor="let sv of servers" class="hover:bg-gray-50 transition duration-150">
+            <td class="px-6 py-3 text-gray-800 font-medium">{{ sv.name }}</td>
+            <td class="px-6 py-3 text-gray-800">{{ sv.url }}</td>
+            <td class="px-6 py-3 text-center space-x-2">
+              <!-- Editar -->
+              <button
+                (click)="startEdit(sv)"
+                title="Editar"
+                class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15.232 5.232l3.536 3.536M9 11l6 6L21 11l-6-6L9 11z" />
+                </svg>
+              </button>
+
+              <!-- Eliminar -->
+              <button
+                (click)="confirmDelete(sv.id_server)"
+                title="Eliminar"
+                class="p-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19 7L5 7M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12" />
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <form class="space-y-8" (ngSubmit)="onSubmit($event)">
-        <!-- Server Section -->
-        <div class="bg-gray-50 rounded-lg p-6">
-            <h2 class="text-xl font-medium text-gray-900 mb-2">Servidor</h2>
-            <p class="text-gray-600 mb-6">Ingrese los parámetros necesarios para registrar un nuevo servidor</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre del servidor
-                    </label>
-                    <input
-                            type="text"
-                            id="nombre"
-                            [(ngModel)]="nombre"
-                            name="nombre"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Calidad"
-                        >
-                </div>
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Dirección IP
-                    </label>
-                    <input
-                            type="text"
-                            id="ip"
-                            [(ngModel)]="ip"
-                            name="ip"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="10.10.25.63"
-                        >
-                </div>
-            </div>
-        </div>
-
-        <!-- Submit Button -->
-        <div class="flex justify-end">
-            <button
-                type="submit"
-                class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-            >
-                Añadir Servidor
-            </button>
-        </div>
-    </form>
+    <div *ngIf="servers.length === 0" class="p-4 text-center text-gray-500 bg-gray-100">
+      No se han registrado servidores aún.
+    </div>
+  </div>
 </div>

@@ -1,129 +1,215 @@
-<div class="max-w-4xl mx-auto p-6 bg-white">
-    <!-- ✅ Alerta tipo TOAST -->
-    <div
-        *ngIf="alertVisible"
-        [ngClass]="{
-        'bg-green-100 border border-green-500 text-green-700': alertType === 'success',
-        'bg-orange-100 border border-orange-500 text-orange-700': alertType === 'error'
-        }"
-        class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
-        [class.opacity-100]="alertVisible"
-        [class.opacity-0]="!alertVisible"
-        role="alert"
-    >
-        <div class="flex justify-between items-start">
-        <div>
-            <p class="font-bold">
-            {{ alertType === 'success' ? 'Éxito' : 'Error' }}
-            </p>
-            <p>{{ alertMessage }}</p>
-        </div>
-
-        <!-- Botón para cerrar manualmente -->
-        <button
-            (click)="closeAlert()"
-            class="text-gray-500 hover:text-gray-700 ml-4"
-        >
-            ✖
-        </button>
-        </div>
-    </div>
-
-    <!-- Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-semibold text-gray-900 mb-2">Añadir Tipos de Conexión</h1>
-        <p class="text-gray-600">Configura los parámetros de conexión para los servidores</p>
-    </div>
-
-    <!-- ✅ Alerta dinámica con Tailwind
-    <div
-        *ngIf="alertVisible"
-        [ngClass]="{
-        'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
-        'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
-        }"
-        class="p-4 rounded-md shadow-sm mb-6 transition-all duration-300"
-        role="alert"
-    >
+<div class="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow">
+  <!-- ✅ ALERTA TOAST -->
+  <div
+    *ngIf="alertVisible"
+    [ngClass]="{
+      'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
+      'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
+    }"
+    class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
+    [class.opacity-100]="alertVisible"
+    [class.opacity-0]="!alertVisible"
+    role="alert"
+  >
+    <div class="flex justify-between items-start">
+      <div>
         <p class="font-bold">
-        {{ alertType === 'success' ? 'Éxito' : 'Error' }}
+          {{ alertType === 'success' ? 'Éxito' : 'Error' }}
         </p>
         <p>{{ alertMessage }}</p>
-    </div> -->
+      </div>
+      <button (click)="closeAlert()" class="text-gray-500 hover:text-gray-700 ml-4">
+        ✖
+      </button>
+    </div>
+  </div>
 
-    <form class="space-y-8" (ngSubmit)="onSubmit($event)">
-        <!-- Connection Section -->
-        <div class="bg-gray-50 rounded-lg p-6">
-            <h2 class="text-xl font-medium text-gray-900 mb-2">Conexiones</h2>
-            <p class="text-gray-600 mb-6">Ingrese los parámetros necesarios para registrar una nueva conexión</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre del servidor
-                    </label>
-                    <select
-                        id="servidor"
-                        name="servidor"
-                        [(ngModel)]="selectedServer"
-                        class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="">Seleccionar...</option>
-                        <option *ngFor="let s of servers" [value]="s.name">{{ s.name }}</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Tipo de conexión
-                    </label>
-                    <select
-                        id="conexión"
-                        [(ngModel)]="conexion"
-                        name="conexión"
-                        class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                        <option value="">Seleccionar...</option>
-                        <option value="SMPP">SMPP</option>
-                        <option value="MQ">MQ</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre de la Conexión
-                    </label>
-                    <input
-                            type="text"
-                            id="nombre"
-                            [(ngModel)]="nombre"
-                            name="nombre"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="10.10.25.63"
-                        >
-                </div>
-                <div>
-                    <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
-                        Puerto de Conexión
-                    </label>
-                    <input
-                            type="text"
-                            id="puerto"
-                            [(ngModel)]="puerto"
-                            name="puerto"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="10.10.25.63"
-                        >
-                </div>
-            </div>
+  <!-- HEADER -->
+  <div class="flex justify-between items-center mb-8">
+    <div>
+      <h1 class="text-3xl font-semibold text-gray-900 mb-2">Conexiones</h1>
+      <p class="text-gray-600">
+        Configura los parámetros de conexión para los servidores
+      </p>
+    </div>
+    <button
+      (click)="toggleForm()"
+      class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+    >
+      <span class="text-lg mr-2">＋</span> {{ showForm ? 'Cerrar' : 'Añadir' }}
+    </button>
+  </div>
+
+  <!-- FORMULARIO -->
+  <form
+    *ngIf="showForm"
+    class="space-y-8 border-t border-gray-200 pt-6"
+    (ngSubmit)="onSubmit($event)"
+  >
+    <div class="bg-gray-50 rounded-lg p-6">
+      <h2 class="text-xl font-medium text-gray-900 mb-2">
+        {{ editingId ? 'Editar Conexión' : 'Nueva Conexión' }}
+      </h2>
+      <p class="text-gray-600 mb-6">
+        Ingrese los parámetros necesarios para registrar una nueva conexión
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Servidor -->
+        <div>
+          <label
+            for="servidor"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Servidor
+          </label>
+          <select
+            id="servidor"
+            name="server" required
+            [(ngModel)]="selectedServer" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">Seleccione un servidor</option>
+            <option *ngFor="let server of servers" [value]="server.id_server">
+                {{ server.name }}
+            </option>
+          </select>
         </div>
 
-        <!-- Submit Button -->
-        <div class="flex justify-end">
-            <button
-                type="submit"
-                class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+        <!-- Tipo de conexión -->
+        <div>
+          <label
+            for="conexion"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Tipo de conexión
+          </label>
+          <select
+            id="conexion"
+            [(ngModel)]="conexion"
+            name="conexion"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">Seleccionar...</option>
+            <option value="SMPP">SMPP</option>
+            <option value="MQ">MQ</option>
+          </select>
+        </div>
+
+        <!-- Nombre -->
+        <div>
+          <label
+            for="nombre"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Nombre de la Conexión
+          </label>
+          <input
+            type="text"
+            id="nombre"
+            [(ngModel)]="nombre"
+            name="nombre"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="SMPP Calidad"
+          />
+        </div>
+
+        <!-- Puerto -->
+        <div>
+          <label
+            for="puerto"
+            class="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Puerto de Conexión
+          </label>
+          <input
+            type="number"
+            id="puerto"
+            [(ngModel)]="puerto"
+            name="puerto"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="7459"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end">
+      <button
+        type="submit"
+        class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+      >
+        {{ editingId ? 'Actualizar' : 'Guardar' }}
+      </button>
+    </div>
+  </form>
+
+  <!-- ✅ TABLA DE CONEXIONES -->
+  <div class="mt-10 border border-gray-200 rounded-xl overflow-hidden shadow-inner">
+    <div class="overflow-x-auto overflow-y-auto max-h-96">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-100 sticky top-0 shadow-sm">
+          <tr>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">
+              Nombre
+            </th>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">
+              Tipo
+            </th>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">
+              Puerto
+            </th>
+            <th class="px-6 py-3 text-left font-bold text-gray-600 uppercase">
+              Servidor
+            </th>
+            <th
+              class="px-6 py-3 text-center font-bold text-gray-600 uppercase"
             >
-                Añadir Conexión
-            </button>
-        </div>
-    </form>
+              Acciones
+            </th>
+          </tr>
+        </thead>
+
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr
+            *ngFor="let co of connections"
+            class="hover:bg-gray-50 transition duration-150"
+          >
+            <td class="px-6 py-3 text-gray-800 font-medium">{{ co.name }}</td>
+            <td class="px-6 py-3 text-gray-800">{{ co.type }}</td>
+            <td class="px-6 py-3 text-gray-800">{{ co.port }}</td>
+            <td class="px-6 py-3 text-gray-800">
+              {{ co.server?.name || '—' }}
+            </td>
+            <td class="px-6 py-3 text-center space-x-2">
+              <!-- Editar -->
+              <button
+                (click)="startEdit(co)"
+                title="Editar"
+                class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+              >
+                ✎
+              </button>
+
+              <!-- Eliminar -->
+              <button
+                (click)="confirmDelete(co.id_connection)"
+                title="Eliminar"
+                class="p-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition"
+              >
+                🗑️
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div
+      *ngIf="connections.length === 0"
+      class="p-4 text-center text-gray-500 bg-gray-100"
+    >
+      No se han registrado conexiones aún.
+    </div>
+  </div>
 </div>

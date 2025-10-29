@@ -110,8 +110,37 @@ export class AddDBComponent {
     this.deleteDatabase(id);
   }
 
-  deleteDatabase(id: number) {
-    this.apiService.deleteDatabase(id).subscribe({
+  async deleteDatabase(id: number) {
+    const currentUser = this.authService.getUser();
+    let matchedUser: any = null;
+
+    if (currentUser && currentUser.name) {
+      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+
+      try {
+        const users = await lastValueFrom(this.apiService.getUsers());
+        // Soportar tanto respuesta directa como { data: [...] }
+        const usersArray = Array.isArray(users)
+          ? users
+          : users && Array.isArray(users.data)
+          ? users.data
+          : [];
+
+        matchedUser = usersArray.find((u: any) => u?.name === currentUser.name) ?? null;
+      } catch (err) {
+        console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        // No interrumpimos el flujo si no se pudo emparejar
+        matchedUser = null;
+      }
+    } else {
+      console.warn('⚠️ No hay usuario autenticado. Cerrando sesión.');
+      this.authService.logout();
+      return;
+    }
+
+    const id_user = matchedUser ? matchedUser.id : null;
+
+    this.apiService.deleteDatabase(id, id_user).subscribe({
       next: () => {
         this.showAlert('success', 'Base de datos eliminada con éxito');
         this.loadDatabases();
@@ -135,6 +164,28 @@ export class AddDBComponent {
       return;
     }
 
+    const currentUser = this.authService.getUser();
+      let matchedUser: any = null;
+    
+      if (currentUser && currentUser.name) {
+        console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+        try {
+          const users = await lastValueFrom(this.apiService.getUsers());
+          // Varias APIs devuelven directamente un array o un objeto { data: [...] }
+          const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+          matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+        } catch (err) {
+          console.error('❌ Error obteniendo usuarios para emparejar:', err);
+          // No bloqueamos todo el proceso por un fallo al obtener la lista de usuarios;
+          // matchedUser permanecerá en null y el id_user será enviado como null.
+        }
+      } else {
+        console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+        this.authService.logout();
+        this.isSubmitting = false;
+        return; // Salimos porque no hay usuario con el que asociar la acción
+      }
+
     const payload: any = {
       name: this.name,
       host: this.host,
@@ -142,6 +193,7 @@ export class AddDBComponent {
       user: this.user,
       auth_db: this.auth_db,
       name_db: this.name_db,
+      id_user: matchedUser ? matchedUser.id : null,
     };
 
     // Solo incluir password si el usuario escribió algo (para no forzar a cambiarla)

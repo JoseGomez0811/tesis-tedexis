@@ -20,7 +20,7 @@ return new class extends Migration
                   ->references('id')
                   ->on('users')
                   ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                  ->onDelete('set null');
 
             $table->unsignedBigInteger('id_server')->nullable();
 
@@ -28,7 +28,7 @@ return new class extends Migration
                   ->references('id_server')
                   ->on('servers')
                   ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                  ->onDelete('set null');
 
             $table->unsignedBigInteger('id_connection')->nullable();
 
@@ -36,7 +36,7 @@ return new class extends Migration
                   ->references('id_connection')
                   ->on('connections')
                   ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                  ->onDelete('set null');
 
             $table->unsignedBigInteger('id_db')->nullable();
 
@@ -44,7 +44,7 @@ return new class extends Migration
                   ->references('id')
                   ->on('database_connections')
                   ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                  ->onDelete('set null');
 
             $table->unsignedBigInteger('id_simulation')->nullable();
 
@@ -52,7 +52,7 @@ return new class extends Migration
                   ->references('id_simulation')
                   ->on('simulations')
                   ->onUpdate('cascade')
-                  ->onDelete('cascade');
+                  ->onDelete('set null');
 
             $table->string('description', 500);
 

@@ -26,6 +26,22 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/servers`, data);
   }
 
+  updateServer(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.baseUrl}/servers/${id}`, data, this.httpOptions); // ✅ Con headers
+  }
+
+  // deleteServer(id: number): Observable<any> {
+  //   return this.http.delete(`${this.baseUrl}/servers/${id}`, this.httpOptions); // ✅ Con headers
+  // }
+
+  deleteServer(id: number, id_user: number) {
+    return this.http.delete(`${this.baseUrl}/servers/${id}`, {
+      body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
+      headers: this.httpOptions.headers
+    });
+  }
+
+
   // --- DATABASES ---
   getDatabases(): Observable<any> {
     return this.http.get(`${this.baseUrl}/databases`); // ✅ Cambiado
@@ -41,8 +57,15 @@ export class ApiService {
     return this.http.put(`${this.baseUrl}/databases/${id}`, data, this.httpOptions); // ✅ Con headers
   }
 
-  deleteDatabase(id: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/databases/${id}`, this.httpOptions); // ✅ Con headers
+  // deleteDatabase(id: number): Observable<any> {
+  //   return this.http.delete(`${this.baseUrl}/databases/${id}`, this.httpOptions); // ✅ Con headers
+  // }
+
+  deleteDatabase(id: number, id_user: number) {
+    return this.http.delete(`${this.baseUrl}/databases/${id}`, {
+      body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
+      headers: this.httpOptions.headers
+    });
   }
 
   // --- CONNECTIONS ---
@@ -53,6 +76,17 @@ export class ApiService {
   addConnection(data: any): Observable<any> {
     console.log('🚀 Datos:', data);
     return this.http.post(`${this.baseUrl}/connections`, data);
+  }
+
+  updateConnection(id: number, data: any): Observable<any> {
+    return this.http.put(`${this.baseUrl}/connections/${id}`, data, this.httpOptions); // ✅ Con headers
+  }
+
+  deleteConnection(id: number, id_user: number) {
+    return this.http.delete(`${this.baseUrl}/connections/${id}`, {
+      body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
+      headers: this.httpOptions.headers
+    });
   }
 
 // --- COLLECTIONS ---
