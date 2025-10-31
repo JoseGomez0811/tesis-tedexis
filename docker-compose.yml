@@ -1,6 +1,5 @@
 services:
-  # Backend
-  # Laravel
+  # Backend Laravel (PHP 8.2)
   app:
     build: 
       context: ./Backend
@@ -11,9 +10,8 @@ services:
       - ./Backend:/var/www
     networks:
       - laravel
-      
+
   # Frontend Angular
-  # Angular
   angular:
     build:
       context: ./Frontend
@@ -28,10 +26,7 @@ services:
     networks:
       - laravel
 
-
-
-  # Servidor Web
-  # Nginx
+  # Servidor Web Nginx
   nginx:
     image: nginx:1.25
     container_name: tedexis_nginx
@@ -62,7 +57,7 @@ services:
     ports:
       - "5433:5432"
 
-  # Base de datos MongoDB
+  # Base de datos MongoDB (local opcional)
   mongodb:
     image: mongo:7.0
     container_name: tedexis_mongodb
@@ -89,6 +84,22 @@ services:
       - "6379:6379"
     networks:
       - laravel
+
+  # 🧩 Nuevo servicio: Microservicio PHP 7.4 para MongoDB 3.4 remoto
+  mongo-bridge:
+    build:
+      context: ./MongoBridge
+      dockerfile: Dockerfile
+    container_name: tedexis_mongo_bridge
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./MongoBridge/storage/logs:/var/www/storage/logs
+    networks:
+      - laravel
+
+
 
 networks:
   laravel:

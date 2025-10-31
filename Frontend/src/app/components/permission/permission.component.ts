@@ -143,7 +143,7 @@ export class PermissionComponent implements OnInit {
                         id_connection: null,
                         id_db: null,
                         id_simulation: null,
-                        description: 'Se aceptó una petición de autorización de usuario',
+                        description: `Se le autorizó el acceso al usuario ${user.name}`
                         };
 
 
@@ -220,7 +220,7 @@ export class PermissionComponent implements OnInit {
                         id_connection: null,
                         id_db: null,
                         id_simulation: null,
-                        description: 'Se denegó una petición de autorización de usuario',
+                        description: `Se le denegó la petición de acceso al usuario ${user.name}`,
                         };
 
 
@@ -266,5 +266,233 @@ export class PermissionComponent implements OnInit {
 
     trackByUserId(index: number, user: User): number {
         return user.id;
+    }
+
+    handleMakeAdmin(userId: number): void {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        this.loading = true;
+        this.authService.makeAdmin(userId).subscribe({
+            next: (response) => {
+            if (response.success) {
+                user.role = 'admin';
+                this.showNotificationMessage(`${user.name} ahora es administrador`, 'success');
+            } else {
+                this.showNotificationMessage('Error al asignar rol de administrador', 'error');
+            }
+            this.loading = false;
+
+            const currentUser = this.authService.getUser();
+
+                if (currentUser) {
+                this.user = currentUser;
+                this.googleUserData = {
+                    fullName: currentUser.name || '',
+                    email: currentUser.email || '',
+                };
+                } else {
+                this.authService.logout();
+                return; // Detiene la ejecución si no hay usuario
+                }
+
+                // 🔹 Obtenemos la lista de usuarios desde la API
+                this.apiService.getUsers().subscribe({
+                next: (users: any[]) => {
+                    // Busca el usuario cuyo nombre coincida con el usuario actual
+                    const matchedUser = users.find(
+                    (u) => u.name === this.googleUserData.fullName
+                    );
+
+                    if (matchedUser) {
+                        const id_user = matchedUser.id;
+                        
+                        const logData = {
+                        id_user: id_user,
+                        id_server: null,
+                        id_connection: null,
+                        id_db: null,
+                        id_simulation: null,
+                        description: `Se le concedieron los permisos de administrador al usuario ${user.name}`
+                        };
+
+
+                        console.log('🟢 Log listo para enviar:', logData);
+
+                        // ✅ Enviar los logs al backend
+                        this.apiService.storeLogs(logData).subscribe({
+                            next: (res) => console.log('✅ Log guardado correctamente:', res),
+                            error: (err) => console.error('❌ Error al guardar log:', err),
+                        });
+
+                    
+                    } else {
+                    console.warn('⚠️ No se encontró el usuario en la base de datos');
+                    }
+                },
+                error: (err) => {
+                    console.error('❌ Error al obtener usuarios:', err);
+                },
+            });
+            },
+            error: (error) => {
+            console.error('Error haciendo admin:', error);
+            this.showNotificationMessage('Error al hacer admin', 'error');
+            this.loading = false;
+            }
+        });
+        }
+
+    handleRemoveAdmin(userId: number): void {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        this.loading = true;
+        this.authService.removeAdmin(userId).subscribe({
+            next: (response) => {
+            if (response.success) {
+                user.role = 'user';
+                this.showNotificationMessage(`${user.name} ya no es administrador`, 'success');
+            } else {
+                this.showNotificationMessage('Error al quitar rol de administrador', 'error');
+            }
+            this.loading = false;
+            },
+            error: (error) => {
+            console.error('Error quitando admin:', error);
+            this.showNotificationMessage('Error al quitar admin', 'error');
+            this.loading = false;
+
+            const currentUser = this.authService.getUser();
+
+                if (currentUser) {
+                this.user = currentUser;
+                this.googleUserData = {
+                    fullName: currentUser.name || '',
+                    email: currentUser.email || '',
+                };
+                } else {
+                this.authService.logout();
+                return; // Detiene la ejecución si no hay usuario
+                }
+
+                // 🔹 Obtenemos la lista de usuarios desde la API
+                this.apiService.getUsers().subscribe({
+                next: (users: any[]) => {
+                    // Busca el usuario cuyo nombre coincida con el usuario actual
+                    const matchedUser = users.find(
+                    (u) => u.name === this.googleUserData.fullName
+                    );
+
+                    if (matchedUser) {
+                        const id_user = matchedUser.id;
+                        
+                        const logData = {
+                        id_user: id_user,
+                        id_server: null,
+                        id_connection: null,
+                        id_db: null,
+                        id_simulation: null,
+                        description: `Se le removió los permisos de administrador al usuario ${user.name}`
+                        };
+
+
+                        console.log('🟢 Log listo para enviar:', logData);
+
+                        // ✅ Enviar los logs al backend
+                        this.apiService.storeLogs(logData).subscribe({
+                            next: (res) => console.log('✅ Log guardado correctamente:', res),
+                            error: (err) => console.error('❌ Error al guardar log:', err),
+                        });
+
+                    
+                    } else {
+                    console.warn('⚠️ No se encontró el usuario en la base de datos');
+                    }
+                },
+                error: (err) => {
+                    console.error('❌ Error al obtener usuarios:', err);
+                },
+            });
+
+            }
+        });
+    }
+
+    removeAuthorization(userId: number): void {
+        const user = this.users.find(u => u.id === userId);
+        if (!user) return;
+
+        this.loading = true;
+        this.authService.rejectUser(userId).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    // Actualizar el usuario en la lista local
+                    user.authorization_status = 'rejected';
+                    this.filterUsers();
+                    this.showNotificationMessage(`Petición de ${user.name} removida`, 'error');
+                } else {
+                    this.showNotificationMessage('Error al remover usuario', 'error');
+                }
+                this.loading = false;
+
+                const currentUser = this.authService.getUser();
+
+                if (currentUser) {
+                this.user = currentUser;
+                this.googleUserData = {
+                    fullName: currentUser.name || '',
+                    email: currentUser.email || '',
+                };
+                } else {
+                this.authService.logout();
+                return; // Detiene la ejecución si no hay usuario
+                }
+
+                // 🔹 Obtenemos la lista de usuarios desde la API
+                this.apiService.getUsers().subscribe({
+                next: (users: any[]) => {
+                    // Busca el usuario cuyo nombre coincida con el usuario actual
+                    const matchedUser = users.find(
+                    (u) => u.name === this.googleUserData.fullName
+                    );
+
+                    if (matchedUser) {
+                        const id_user = matchedUser.id;
+                        
+                        const logData = {
+                        id_user: id_user,
+                        id_server: null,
+                        id_connection: null,
+                        id_db: null,
+                        id_simulation: null,
+                        description: `Se le removió la autorización de acceso al usuario ${user.name}`
+                        };
+
+
+                        console.log('🟢 Log listo para enviar:', logData);
+
+                        // ✅ Enviar los logs al backend
+                        this.apiService.storeLogs(logData).subscribe({
+                            next: (res) => console.log('✅ Log guardado correctamente:', res),
+                            error: (err) => console.error('❌ Error al guardar log:', err),
+                        });
+
+                    
+                    } else {
+                    console.warn('⚠️ No se encontró el usuario en la base de datos');
+                    }
+                },
+                error: (err) => {
+                    console.error('❌ Error al obtener usuarios:', err);
+                },
+                });
+            },
+            error: (error) => {
+                console.error('Error removiendo autorización:', error);
+                this.showNotificationMessage('Error al remover autorización', 'error');
+                this.loading = false;
+            }
+        });
     }
 }

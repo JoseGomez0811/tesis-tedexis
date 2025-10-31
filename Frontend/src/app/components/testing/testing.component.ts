@@ -49,6 +49,9 @@ export class TestingComponent implements OnInit {
   password = '';
   sc = '';
   encoding = '';
+  sarSegmentSeqNum = '';
+  sarMsgRefNum = '';
+  sarTotalSegments = '';
 
   // Campos reuso
   baseDeDatos = '';
@@ -170,7 +173,8 @@ export class TestingComponent implements OnInit {
 
     this.apiService.getCollections(db.id).subscribe({
       next: (res: any) => {
-        this.collection = Array.isArray(res) ? res : res.data ?? [];
+        this.collection = Array.isArray(res) ? res : (res.collections ?? []);
+        //this.collection = Array.isArray(res) ? res : res.data ?? [];
       },
       error: err => {
         console.error('Error cargando colecciones:', err);
@@ -190,7 +194,8 @@ export class TestingComponent implements OnInit {
 
     this.apiService.getCollectionData(dbObj.id, collectionName).subscribe({
       next: (res: any) => {
-        this.documents = Array.isArray(res) ? res : res.data ?? [];
+        //this.documents = Array.isArray(res) ? res : res.data ?? [];
+        this.documents = Array.isArray(res) ? res : (res.data ?? []);
         this.selectedDocument = null;
       },
       error: err => {
@@ -249,13 +254,28 @@ export class TestingComponent implements OnInit {
 
     this.apiService.getDocument(dbObj.id, collectionName, docIdToUse).subscribe({
       next: (res: any) => {
-        this.selectedDocument = res;
-        console.log('✅ Documento detallado cargado:', res);
-        this.systemId = res.SystemID || this.systemId || '';
-        this.numeroTelefono = res.PhoneNumber;
-        this.mensaje = res.Text; 
-        this.sc = res.ShortCode;
-        this.encoding = res.Encoding;
+        const doc = res && res.document ? res.document : res;
+        this.selectedDocument = doc;
+        console.log('✅ Documento detallado cargado:', doc);
+        this.systemId = doc.SystemID || doc.systemId || '';
+        this.numeroTelefono = doc.submitSm.destAddress || doc.phoneNumber || '';
+        this.mensaje = doc.submitSm.shortMessageString || doc.Text || '';
+        this.sc = doc.shortCode || doc.ShortCode || '';
+        this.encoding = doc.Encoding || doc.submitSm.dataCoding || '';
+        this.sarSegmentSeqNum = doc.SAR_SEGMENT_SEQNUM || '';
+        this.sarMsgRefNum = doc.SAR_MSG_REF_NUM || '';
+        this.sarTotalSegments = doc.SAR_TOTAL_SEGMENTS || '';
+
+        console.table({
+          systemId: this.systemId,
+          numeroTelefono: this.numeroTelefono,
+          mensaje: this.mensaje,
+          sc: this.sc,
+          encoding: this.encoding,
+          sarSegmentSeqNum: this.sarSegmentSeqNum,
+          sarMsgRefNum: this.sarMsgRefNum,
+          sarTotalSegments: this.sarTotalSegments,
+      });
       },
       error: err => {
         console.error('❌ Error cargando el documento detallado:', err);
@@ -304,6 +324,12 @@ export class TestingComponent implements OnInit {
     this.isSubmitting = false;
   }
 
+  getRandomDocuments(array: any[], count: number): any[] {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, Math.min(count, array.length));
+  }
+
+
   async onSubmit(event: Event) {
     event.preventDefault();
 
@@ -349,11 +375,8 @@ export class TestingComponent implements OnInit {
       console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
       this.authService.logout();
       this.isSubmitting = false;
-      return; // Salimos porque no hay usuario con el que asociar la acción
+      return;
     }
-  // if (matchedUser) {
-  //   const id_user = matchedUser.id;
-  // }
 
     const simulationDataBase: any = {
       hostServer: serverUrl,
@@ -400,81 +423,11 @@ export class TestingComponent implements OnInit {
           };
 
           console.log(`🚀 Enviando simulación ${index + 1}/${this.phoneNumbers.length} con número: ${num}`);
-
-          
-          
-          
-          
-          
           
           try {
             // 👉 Enviar y almacenar simulación (un solo endpoint)
             const res = await lastValueFrom(this.apiService.sendSimulation(simulationData));
             console.log(`✅ Simulación ${index + 1} enviada y almacenada:`, res);
-
-            // const id_simulation = res?.id_simulation;
-            // console.log('🆕 ID de simulación generado:', id_simulation);
-
-            // if (!id_simulation) {
-            //   console.error('❌ No se pudo obtener el ID de la simulación');
-            //   failedSimulations++;
-            //   continue;
-            // }
-
-
-
-
-
-
-
-
-
-            // // Obtener usuario actual
-            // const currentUser = this.authService.getUser();
-            // if (!currentUser) {
-            //   this.authService.logout();
-            //   failedSimulations++;
-            //   continue;
-            // }
-
-            // // Crear log
-            // try {
-            //   const users = await lastValueFrom(this.apiService.getUsers());
-            //   const matchedUser = users.find((u: any) => u.name === currentUser.name);
-
-            //   if (matchedUser) {
-            //     const id_user = matchedUser.id;
-            //     const logData = {
-            //       id_user: id_user,
-            //       id_simulation: id_simulation,
-            //       id_server: null,
-            //       id_connection: null,
-            //       id_db: null,
-            //       description: `El usuario ejecutó una simulación:
-            //         Host = ${simulationDataBase.hostServer}, 
-            //         Puerto = ${simulationDataBase.portConnection},
-            //         Nombre Cola = ${simulationDataBase.nameQueue},
-            //         Número de Teléfono = ${simulationData.phoneNumber},
-            //         Código Corto = ${simulationData.shortCode}`
-            //     };
-
-            //     console.log('🟢 Log listo para enviar:', logData);
-            //     await lastValueFrom(this.apiService.storeLogs(logData));
-            //     console.log('✅ Log guardado correctamente');
-            //   }
-            // } catch (logError) {
-            //   console.error('❌ Error al guardar log:', logError);
-            // }
-
-
-
-
-
-
-
-
-
-
             successfulSimulations++;
 
           } catch (error) {
@@ -497,74 +450,89 @@ export class TestingComponent implements OnInit {
 
         this.resetForm();
 
-        // 🔹 SIMULACIÓN DE REUSO
-      } else if (this.showReusoFields) {
-        const simulationData: any = {
-          ...simulationDataBase,
-          systemID: this.systemId,
-          password: this.password,
-          phoneNumber: this.numeroTelefono,
-          message: this.mensaje,
-          number: this.cantidadReuso,
-          shortCode: Number(this.sc),
-          encoding: this.encoding,
-          id_user: matchedUser ? matchedUser.id : null,
-          description: `El usuario ejecutó una simulación:
-                    Host = ${simulationDataBase.hostServer || 'Desconocido'}, 
-                    Puerto = ${simulationDataBase.portConnection || 'Desconocido'},
-                    Nombre Cola = ${simulationDataBase.nameQueue || 'Desconocido'},
-                    Número de Teléfono = ${this.numeroTelefono || 'Desconocido'},
-                    Short Code = ${Number(this.sc) || 'Desconocido'}`,
-        };
-
-        console.log('🚀 Enviando simulación de reuso');
-
-        try {
-          const res = await lastValueFrom(this.apiService.sendSimulation(simulationData));
-          console.log('✅ Simulación de reuso enviada y almacenada:', res);
-
-          const id_simulation = res?.id_simulation;
-          console.log('🆕 ID de simulación generado:', id_simulation);
-
-          if (!id_simulation) {
-            throw new Error('No se pudo obtener el ID de la simulación');
+      // 🔹 SIMULACIÓN DE REUSO
+      }else if (this.showReusoFields) {
+          if (!this.selectedDB || !this.selectedCollection) {
+            this.showAlert('error', 'Debe seleccionar una base de datos y una colección.');
+            this.isSubmitting = false;
+            return;
           }
 
-          // Crear log
-          const currentUser = this.authService.getUser();
-          if (currentUser) {
-            const users = await lastValueFrom(this.apiService.getUsers());
-            const matchedUser = users.find((u: any) => u.name === currentUser.name);
+          if (!this.cantidadReuso || this.cantidadReuso <= 0) {
+            this.showAlert('error', 'Debe indicar una cantidad válida de registros a reutilizar.');
+            this.isSubmitting = false;
+            return;
+          }
 
-            if (matchedUser) {
-              const id_user = matchedUser.id;
-              const logData = {
-                id_user: id_user,
-                id_simulation: id_simulation,
-                id_server: null,
-                id_connection: null,
-                id_db: null,
-                description: `El usuario ejecutó una simulación de reuso:
-                  Host = ${simulationDataBase.hostServer}, 
-                  Puerto = ${simulationDataBase.portConnection},
-                  Nombre Cola = ${simulationDataBase.nameQueue},
-                  Número de Teléfono = ${simulationData.phoneNumber},
-                  Código Corto = ${simulationData.shortCode}`
-              };
+          // Cargar todos los documentos de la colección seleccionada
+          const dbObj = this.db.find(d => d.name === this.selectedDB);
+          const collectionName = this.selectedCollection;
 
-              await lastValueFrom(this.apiService.storeLogs(logData));
-              console.log('✅ Log guardado correctamente');
+          if (!dbObj || !dbObj.id) {
+            this.showAlert('error', 'No se encontró la base de datos seleccionada.');
+            this.isSubmitting = false;
+            return;
+          }
+
+          let allDocuments: any[] = [];
+          try {
+            const res = await lastValueFrom(this.apiService.getCollectionData(dbObj.id, collectionName));
+            allDocuments = Array.isArray(res) ? res : (res.data ?? []);
+          } catch (err) {
+            console.error('❌ Error obteniendo los documentos:', err);
+            this.showAlert('error', 'Error al cargar los registros de la colección.');
+            this.isSubmitting = false;
+            return;
+          }
+
+          if (allDocuments.length === 0) {
+            this.showAlert('error', 'La colección seleccionada está vacía.');
+            this.isSubmitting = false;
+            return;
+          }
+
+          // Seleccionar registros aleatorios sin repetición
+          const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
+
+          let successfulSimulations = 0;
+          let failedSimulations = 0;
+
+          for (let i = 0; i < selectedDocs.length; i++) {
+            const doc = selectedDocs[i];
+
+            const simulationData: any = {
+              ...simulationDataBase,
+              requestId: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+              systemID: doc.SystemID || doc.systemId || '',
+              password: this.password || doc.password || '',
+              phoneNumber: doc.PhoneNumber || doc.submitSm?.destAddress || '',
+              message: doc.Text || doc.submitSm?.shortMessageString || '',
+              number: this.cantidadReuso,
+              shortCode: Number(doc.ShortCode || doc.shortCode || doc.sc || 0),
+              encoding: doc.Encoding || doc.submitSm?.dataCoding || '0',
+              sarSegmentSeqNum: doc.SAR_SEGMENT_SEQNUM || 0,
+              sarMsgRefNum: doc.SAR_MSG_REF_NUM || 0,
+              sarTotalSegments: doc.SAR_TOTAL_SEGMENTS || 0,
+              id_user: matchedUser ? matchedUser.id : null,
+              description: `Simulación reuso - ${this.cantidadReuso} registros`,
+            };
+
+            try {
+              await lastValueFrom(this.apiService.sendSimulation(simulationData));
+              successfulSimulations++;
+              console.log(`✅ Simulación ${i + 1}/${selectedDocs.length} enviada con éxito`);
+            } catch (error) {
+              failedSimulations++;
+              console.error(`❌ Error en simulación ${i + 1}:`, error);
             }
           }
 
-          this.showAlert('success', '✅ Simulación de reuso enviada con éxito.');
-          this.resetForm();
-
-        } catch (error) {
-          console.error('❌ Error en simulación de reuso:', error);
-          this.showAlert('error', 'Error enviando simulación de reuso ❌');
+          this.showAlert(
+            failedSimulations === 0 ? 'success' : 'error',
+            `Simulación completada. Éxitos: ${successfulSimulations}, Fallos: ${failedSimulations}`
+          );
         }
-      }
+
 
     } catch (error) {
       console.error('❌ Error general en el proceso:', error);
@@ -573,6 +541,4 @@ export class TestingComponent implements OnInit {
       this.isSubmitting = false;
     }
   }
-
-
 }

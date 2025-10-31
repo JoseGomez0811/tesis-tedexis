@@ -99,7 +99,7 @@ class GoogleController extends Controller
                 'email_verified_at' => $user->email_verified_at,
                 'authorization_status' => $user->authorization_status
             ];
-            $redirectUrl = config('app.frontend_url') . '/app/perfil?token=' . urlencode($token)
+            $redirectUrl = config('app.frontend_url') . '/app/login?token=' . urlencode($token)
                 . '&user=' . urlencode(json_encode($userData));
             return redirect($redirectUrl);
         } catch (\Exception $e) {
@@ -121,7 +121,7 @@ class GoogleController extends Controller
     {
         try {
             $pendingUsers = User::pending()
-                ->select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status'])
+                ->select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status', 'role']) // 👈 Agregado 'role'
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -138,13 +138,10 @@ class GoogleController extends Controller
         }
     }
 
-    /**
-     * Obtiene todos los usuarios con sus estados de autorización
-     */
     public function getAllUsers()
     {
         try {
-            $users = User::select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status'])
+            $users = User::select(['id', 'name', 'email', 'avatar', 'created_at', 'authorization_status', 'role']) // 👈 Agregado 'role'
                 ->orderBy('created_at', 'desc')
                 ->get();
 
@@ -160,6 +157,7 @@ class GoogleController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Autoriza un usuario
@@ -228,4 +226,74 @@ class GoogleController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Asigna el rol de administrador a un usuario
+     */
+    public function makeAdmin($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+            $user->role = 'admin';
+            $user->save();
+
+            Log::info('Usuario promovido a admin', [
+                'user_id' => $userId,
+                'user_email' => $user->email,
+                'changed_by' => Auth::user()?->email ?? 'system'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario ahora es administrador',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al hacer admin: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al asignar rol de administrador'
+            ], 500);
+        }
+    }
+
+    /**
+     * Quita el rol de administrador a un usuario
+     */
+    public function removeAdmin($userId)
+    {
+        try {
+            $user = User::findOrFail($userId);
+            $user->role = 'user';
+            $user->save();
+
+            Log::info('Rol de administrador eliminado', [
+                'user_id' => $userId,
+                'user_email' => $user->email,
+                'changed_by' => Auth::user()?->email ?? 'system'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Usuario ya no es administrador',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al quitar admin: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al quitar rol de administrador'
+            ], 500);
+        }
+    }
+
+
 }

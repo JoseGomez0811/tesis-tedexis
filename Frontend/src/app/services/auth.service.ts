@@ -12,6 +12,7 @@ export interface User {
   google_id?: string;
   email_verified_at?: string;
   created_at?: string;
+  role?: string; // 👈 agregado para soportar el rol en la vista
 }
 
 export interface ApiResponse<T> {
@@ -44,18 +45,12 @@ export class AuthService {
     window.location.href = `${this.baseUrl}/google-auth/redirect`;
   }
 
-  /**
-   * Maneja el éxito de la autenticación.
-   * Guarda token y datos del usuario en localStorage
-   */
+  /** Guarda token y datos del usuario */
   handleAuthSuccess(token: string, userData?: User): void {
     console.log('🎉 Token recibido:', token);
-
-    // Guardar token
     localStorage.setItem('auth_token', token);
     this.tokenSubject.next(token);
 
-    // Guardar información del usuario si viene en la respuesta
     if (userData) {
       localStorage.setItem('auth_user', JSON.stringify(userData));
     }
@@ -64,10 +59,8 @@ export class AuthService {
     this.router.navigate(['/app/perfil']);
   }
 
-  /** Maneja errores de autenticación y estados de autorización */
   handleAuthError(error: string, status?: string, firstLogin?: string): void {
     console.error('❌ Error de autenticación:', error, 'Status:', status);
-
     let errorMessage = 'Error en el inicio de sesión. Por favor, inténtalo de nuevo.';
     
     if (status) {
@@ -100,7 +93,6 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  /** Cierra sesión */
   logout(): void {
     console.log('👋 Cerrando sesión...');
     localStorage.removeItem('auth_token');
@@ -109,23 +101,19 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  /** Obtiene el token almacenado */
   getToken(): string | null {
     return localStorage.getItem('auth_token');
   }
 
-  /** Verifica si hay un usuario autenticado */
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
 
-  /** Obtiene información del usuario actual */
   getUser(): User | null {
     const userJson = localStorage.getItem('auth_user');
     return userJson ? JSON.parse(userJson) as User : null;
   }
 
-  /** Headers para peticiones autenticadas */
   private getAuthHeaders(): HttpHeaders {
     const token = this.getToken();
     return new HttpHeaders({
@@ -135,31 +123,44 @@ export class AuthService {
     });
   }
 
-  /** Obtiene todos los usuarios con sus estados */
   getAllUsers(): Observable<ApiResponse<User[]>> {
-  return this.http.get<ApiResponse<User[]>>(`${this.baseUrl}/api/admin/users/all`, {
+    return this.http.get<ApiResponse<User[]>>(`${this.baseUrl}/api/admin/users/all`, {
       headers: this.getAuthHeaders()
     });
   }
 
-  /** Obtiene usuarios pendientes de autorización */
   getPendingUsers(): Observable<ApiResponse<User[]>> {
-  return this.http.get<ApiResponse<User[]>>(`${this.baseUrl}/api/admin/users/pending`, {
+    return this.http.get<ApiResponse<User[]>>(`${this.baseUrl}/api/admin/users/pending`, {
       headers: this.getAuthHeaders()
     });
   }
 
-  /** Autoriza un usuario */
   authorizeUser(userId: number): Observable<ApiResponse<User>> {
-  return this.http.post<ApiResponse<User>>(`${this.baseUrl}/api/admin/users/${userId}/authorize`, {}, {
+    return this.http.post<ApiResponse<User>>(`${this.baseUrl}/api/admin/users/${userId}/authorize`, {}, {
       headers: this.getAuthHeaders()
     });
   }
 
-  /** Rechaza un usuario */
   rejectUser(userId: number): Observable<ApiResponse<User>> {
-  return this.http.post<ApiResponse<User>>(`${this.baseUrl}/api/admin/users/${userId}/reject`, {}, {
+    return this.http.post<ApiResponse<User>>(`${this.baseUrl}/api/admin/users/${userId}/reject`, {}, {
       headers: this.getAuthHeaders()
     });
+  }
+
+  makeAdmin(userId: number): Observable<ApiResponse<User>> {
+    return this.http.post<ApiResponse<User>>(
+      `${this.baseUrl}/api/admin/users/${userId}/make-admin`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
+  }
+
+  /** ✅ Quita privilegios de administrador */
+  removeAdmin(userId: number): Observable<ApiResponse<User>> {
+    return this.http.post<ApiResponse<User>>(
+      `${this.baseUrl}/api/admin/users/${userId}/remove-admin`,
+      {},
+      { headers: this.getAuthHeaders() }
+    );
   }
 }

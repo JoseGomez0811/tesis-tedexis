@@ -26,7 +26,8 @@ class SendSimulationRequest extends FormRequest
             'message' => 'required|string|max:255',
             'number' => 'required|integer', 
             'shortCode' => 'required|integer', 
-            'encoding' => 'required|string|max:255',
+            'encoding' => 'required|integer',
+            // 'encoding' => 'required|string|max:255',
         ];
     }
 }

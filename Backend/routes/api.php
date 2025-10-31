@@ -61,4 +61,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('admin/users/all', [GoogleController::class, 'getAllUsers']);
     Route::post('admin/users/{userId}/authorize', [GoogleController::class, 'authorizeUser']);
     Route::post('admin/users/{userId}/reject', [GoogleController::class, 'rejectUser']);
+    Route::post('/admin/users/{userId}/make-admin', [GoogleController::class, 'makeAdmin']);
+    Route::post('/admin/users/{id}/remove-admin', [GoogleController::class, 'removeAdmin']);
+
+
 });

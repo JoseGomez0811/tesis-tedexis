@@ -18,6 +18,7 @@ class User extends Authenticatable
         'google_id',
         'avatar',
         'authorization_status',
+        'role',
     ];
 
     protected $hidden = [
@@ -29,6 +30,16 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function makeAdmin(): void
+    {
+        $this->update(['role' => 'admin']);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
 
     // Scopes para filtrar usuarios por estado de autorización
     public function scopePending($query)

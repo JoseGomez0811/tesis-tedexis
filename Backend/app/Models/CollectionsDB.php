@@ -77,11 +77,53 @@ class CollectionsDB
 
 // ---
 
+    // public function getCollectionData($connection, $collectionName)
+    // {
+    //     $db = $this->connect($connection);
+    //     return $db->selectCollection($collectionName)->find()->toArray();
+    // }
+
     public function getCollectionData($connection, $collectionName)
     {
         $db = $this->connect($connection);
-        return $db->selectCollection($collectionName)->find()->toArray();
+        $collection = $db->selectCollection($collectionName);
+
+        // Proyección: solo los campos necesarios
+        $cursor = $collection->find(
+            [],
+            [
+                'projection' => [
+                    'systemId' => 1,
+                    'shortCode' => 1,
+                    'submitSm.shortMessageString' => 1,
+                    'submitSm.destAddress' => 1,
+                    'submitSm.dataCoding' => 1,
+                    'SAR_SEGMENT_SEQNUM' => 1,
+                    'SAR_MSG_REF_NUM' => 1,
+                    'SAR_TOTAL_SEGMENTS' => 1,
+                ]
+            ]
+        );
+
+        // Transformar resultados a un formato limpio
+        $data = [];
+        foreach ($cursor as $doc) {
+            $data[] = [
+                '_id' => (string) $doc->_id,
+                'systemId' => $doc->systemId ?? null,
+                'shortCode' => $doc->shortCode ?? null,
+                'shortMessageString' => $doc->submitSm->shortMessageString ?? null,
+                'destAddress' => $doc->submitSm->destAddress ?? null,
+                'dataCoding' => $doc->submitSm->dataCoding ?? null,
+                'SAR_SEGMENT_SEQNUM' => $doc->SAR_SEGMENT_SEQNUM ?? null,
+                'SAR_MSG_REF_NUM' => $doc->SAR_MSG_REF_NUM ?? null,
+                'SAR_TOTAL_SEGMENTS' => $doc->SAR_TOTAL_SEGMENTS ?? null,
+            ];
+        }
+
+        return $data;
     }
+
 
 // ---
 

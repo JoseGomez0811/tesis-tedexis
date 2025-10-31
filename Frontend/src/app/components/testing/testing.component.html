@@ -269,10 +269,10 @@
                       >
                     </td>
                     <td class="px-6 py-3 text-gray-800">{{ doc.SystemID || doc.systemId || doc.system_id || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.PhoneNumber || doc.phoneNumber || doc.phone_number || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.short_code || doc.ShortCode || doc.sc || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.Encoding || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800 truncate max-w-xs">{{ doc.Text || doc.text || '—' }}</td>
+                    <td class="px-6 py-3 text-gray-800">{{ doc.PhoneNumber || doc.submitSm.destAddress || doc.phone_number || '—' }}</td>
+                    <td class="px-6 py-3 text-gray-800">{{ doc.shortCode || doc.ShortCode || doc.sc || '—' }}</td>
+                    <td class="px-6 py-3 text-gray-800">{{ doc.Encoding || doc.submitSm.dataCoding || '—' }}</td>
+                    <td class="px-6 py-3 text-gray-800 truncate max-w-xs">{{ doc.Text || doc.submitSm.shortMessageString || '—' }}</td>
                   </tr>
                 </tbody>
               </table>

@@ -8,7 +8,7 @@
     <form class="space-y-8">
         <div class="bg-gray-50 rounded-lg p-6">
             <h2 class="text-xl font-medium text-gray-900 mb-2">Conceder Permisos</h2>
-            <p class="text-gray-600 mb-6">Autorice o niego el acceso de los usuarios</p>
+            <p class="text-gray-600 mb-6">Autorice o niegue el acceso de los usuarios</p>
             
             <!-- Filtros -->
             <div class="mb-6">
@@ -57,11 +57,21 @@
                 <div 
                     *ngFor="let user of filteredUsers; trackBy: trackByUserId"
                     class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm"
+                    [ngClass]="{ 'bg-yellow-50': user.role === 'admin' }"
                 >
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <div class="flex items-center gap-3 mb-1">
-                                <h3 class="text-lg font-medium text-gray-900">{{ user.name }}</h3>
+                                <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2">
+                                    {{ user.name }}
+                                    <!-- 👑 Badge Admin -->
+                                    <span 
+                                        *ngIf="user.role === 'admin'" 
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                    >
+                                        👑 Admin
+                                    </span>
+                                </h3>
                                 <span [class]="getStatusBadgeClass(user.authorization_status)">
                                     {{ getStatusText(user.authorization_status) }}
                                 </span>
@@ -69,25 +79,80 @@
                             <p class="text-sm text-gray-600">{{ user.email }}</p>
                         </div>
                         
-                        <div class="flex gap-2 ml-4" *ngIf="user.authorization_status === 'pending'">
-                            <button 
-                                type="button"
-                                (click)="handleAccept(user.id)"
-                                [disabled]="loading"
-                                class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
-                            >
-                                <span *ngIf="!loading">Aceptar</span>
-                                <span *ngIf="loading">Procesando...</span>
-                            </button>
-                            <button 
-                                type="button"
-                                (click)="handleReject(user.id)"
-                                [disabled]="loading"
-                                class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
-                            >
-                                <span *ngIf="!loading">Rechazar</span>
-                                <span *ngIf="loading">Procesando...</span>
-                            </button>
+                        <!-- Botones de acción -->
+                        <div class="flex gap-2 ml-4">
+                            <!-- Pendiente -->
+                            <ng-container *ngIf="user.authorization_status === 'pending'">
+                                <button 
+                                    type="button"
+                                    (click)="handleAccept(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Aceptar</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+
+                                <button 
+                                    type="button"
+                                    (click)="handleReject(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Rechazar</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+                            </ng-container>
+
+                            <!-- Autorizado (convertir en Admin) -->
+                            <ng-container *ngIf="user.authorization_status === 'authorized' && user.role !== 'admin'">
+                                <button 
+                                    type="button"
+                                    (click)="handleMakeAdmin(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Hacer Admin</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+                            </ng-container>
+
+                            <!-- Quitar Admin -->
+                            <ng-container *ngIf="user.role === 'admin'">
+                                <button 
+                                    type="button"
+                                    (click)="handleRemoveAdmin(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Quitar Admin</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+                            </ng-container>
+
+                            <ng-container *ngIf="user.authorization_status === 'authorized'">
+                                <button 
+                                    type="button"
+                                    (click)="removeAuthorization(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Remover Autorización</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+                            </ng-container>
+
+                            <ng-container *ngIf="user.authorization_status === 'rejected'">
+                                <button 
+                                    type="button"
+                                    (click)="handleAccept(user.id)"
+                                    [disabled]="loading"
+                                    class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                                >
+                                    <span *ngIf="!loading">Autorizar</span>
+                                    <span *ngIf="loading">Procesando...</span>
+                                </button>
+                            </ng-container>
                         </div>
                     </div>
                 </div>

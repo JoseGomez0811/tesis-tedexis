@@ -22,7 +22,8 @@ class StoreSimulationRequest extends FormRequest
             'message' => 'required|string|max:255',
             'number' => 'required|integer', 
             'short_code' => 'required|integer', 
-            'encoding' => 'required|string|max:255',
+            'encoding' => 'required|integer',
+            // 'encoding' => 'required|string|max:255',
             'id_db'=> 'nullable|exists:database_connections,id',
         ];
     }
