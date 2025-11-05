@@ -59,7 +59,7 @@ class GoogleController extends Controller
 
             // Buscar usuario existente
             $user = User::where('email', $googleUser->getEmail())->first();
-            $isSpecial = $googleUser->getEmail() === 'gomez.jose@correo.unimet.edu.ve';
+            $isSpecial = $googleUser->getEmail() === config('auth.admin_email');
             if (!$user) {
                 // Primera vez: crear usuario
                 $user = User::create([
@@ -70,12 +70,14 @@ class GoogleController extends Controller
                     'avatar' => $googleUser->getAvatar(),
                     'email_verified_at' => now(),
                     'authorization_status' => $isSpecial ? 'authorized' : 'pending',
+                    'role' => $isSpecial ? 'admin' : 'user', // 👈 agrega este campo si manejas roles
                 ]);
             } else if ($isSpecial && $user->authorization_status !== 'authorized') {
                 // Si ya existe y es el especial, actualizar a autorizado
                 $user->authorization_status = 'authorized';
                 $user->save();
             }
+
 
             // Si no está autorizado, notificar y no permitir acceso
             if ($user->authorization_status !== 'authorized') {
@@ -84,24 +86,33 @@ class GoogleController extends Controller
 
             // Usuario autorizado: login y redirigir
             Auth::login($user);
-            $token = $user->createToken('google-login', ['*'], now()->addDays(30))->plainTextToken;
+            $token = $user->createToken('google-login', ['*'], now()->addMinutes(15))->plainTextToken;
 
-            Log::info('Token generado', [
-                'user_id' => $user->id,
-                'token_preview' => substr($token, 0, 10) . '...'
-            ]);
+            // Log::info('Token generado', [
+            //     'user_id' => $user->id,
+            //     'token_preview' => substr($token, 0, 10) . '...',
+            //     'redirect_url' => config('app.frontend_url') . '/app/perfil'
+            // ]);
 
             $userData = [
+                'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'google_id' => $user->google_id,
                 'email_verified_at' => $user->email_verified_at,
-                'authorization_status' => $user->authorization_status
+                'authorization_status' => $user->authorization_status,
+                'role' => $user->role ?? 'user'
             ];
-            $redirectUrl = config('app.frontend_url') . '/app/login?token=' . urlencode($token)
-                . '&user=' . urlencode(json_encode($userData));
-            return redirect($redirectUrl);
+                
+            $frontendUrl = config('app.frontend_url') . '/auth-callback';
+            $fragment = http_build_query([
+                'token' => $token,
+                'user' => urlencode(json_encode($userData))
+            ]);
+
+            return redirect($frontendUrl . '#' . $fragment);
+
         } catch (\Exception $e) {
             Log::error('Error en callback de Google', [
                 'message' => $e->getMessage(),
@@ -165,6 +176,14 @@ class GoogleController extends Controller
     public function authorizeUser($userId)
     {
         try {
+            // Debug: Log CSRF token info
+            Log::info('CSRF Debug - authorizeUser', [
+                'csrf_token_header' => request()->header('X-CSRF-TOKEN') ? substr(request()->header('X-CSRF-TOKEN'), 0, 50) . '...' : 'NO',
+                'xsrf_token_header' => request()->header('X-XSRF-TOKEN') ? substr(request()->header('X-XSRF-TOKEN'), 0, 50) . '...' : 'NO',
+                'cookie_csrf' => request()->cookie('XSRF-TOKEN') ? substr(request()->cookie('XSRF-TOKEN'), 0, 50) . '...' : 'NO',
+                'all_headers' => request()->headers->all(),
+            ]);
+            
             $user = User::findOrFail($userId);
             $user->authorize();
 

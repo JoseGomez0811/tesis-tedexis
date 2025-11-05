@@ -9,6 +9,7 @@ import { lastValueFrom } from 'rxjs';
   selector: 'app-addConnection',
   imports: [CommonModule, FormsModule, NgForOf],
   templateUrl: './addConnection.component.html',
+  styleUrl: './addConnection.component.css',
 })
 export class AddConnectionComponent implements OnInit{
   servers: any[] = [];
@@ -33,6 +34,9 @@ export class AddConnectionComponent implements OnInit{
   alertVisible = false;
   alertType: 'success' | 'error' | null = null;
   alertMessage = '';
+
+  isSaving = false;
+  isDeleting = false;
 
   constructor(
     private apiService: ApiService,
@@ -115,6 +119,7 @@ export class AddConnectionComponent implements OnInit{
   }
 
   async deleteServer(id: number) {
+    this.isDeleting = true;
     const currentUser = this.authService.getUser();
     let matchedUser: any = null;
 
@@ -149,10 +154,12 @@ export class AddConnectionComponent implements OnInit{
 
     this.apiService.deleteConnection(id, id_user).subscribe({
       next: () => {
+        this.isDeleting = false;
         this.showAlert('success', 'Conexión eliminada con éxito ✅');
         this.loadConnections();
       },
       error: (err) => {
+        this.isDeleting = false;
         console.error('❌ Error al eliminar conexión:', err);
         this.showAlert('error', 'Error al eliminar conexión');
       }
@@ -172,6 +179,8 @@ export class AddConnectionComponent implements OnInit{
       this.isSubmitting = false;
       return;
     }
+
+    this.isSaving = true;
 
     // const id_server = this.servers.find(server => server.name === this.selectedServer)?.id_server ?? null;
     const id_server = this.selectedServer ? Number(this.selectedServer) : null;
@@ -212,12 +221,14 @@ export class AddConnectionComponent implements OnInit{
         // MODO EDICIÓN
         this.apiService.updateConnection(this.editingId, payload).subscribe({
           next: () => {
+            this.isSaving = false;
             this.showAlert('success', 'Conexión actualizada con éxito');
             this.resetForm();
             this.loadConnections();
             this.isSubmitting = false;
           },
           error: (err) => {
+            this.isSaving = false;
             console.error('❌ Error al actualizar conexion:', err);
             this.showAlert('error', 'Error al actualizar conexión');
             this.isSubmitting = false;
@@ -227,12 +238,14 @@ export class AddConnectionComponent implements OnInit{
         // MODO CREAR
         this.apiService.addConnection(payload).subscribe({
           next: () => {
+            this.isSaving = false;
             this.showAlert('success', 'Conexión registrada con éxito ✅');
             this.resetForm();
             this.loadConnections();
             this.isSubmitting = false;
           },
           error: (err) => {
+            this.isSaving = false;
             console.error('❌ Error al registrar conexión:', err);
             this.showAlert('error', 'Error al registrar conexión');
             this.isSubmitting = false;
@@ -240,19 +253,10 @@ export class AddConnectionComponent implements OnInit{
         });
       }
     } catch (err) {
+      this.isSaving = false;
       console.error('❌ onSubmit error:', err);
       this.showAlert('error', 'Ocurrió un error inesperado');
       this.isSubmitting = false;
     }
   }
-
-  // ngOnInit(): void {
-  //   this.apiService.getServers().subscribe({
-  //     next: (res: any) => {
-  //       console.log('Servidores recibidos:', res);
-  //       this.servers = Array.isArray(res) ? res : res.data ?? [];
-  //     },
-  //     error: err => console.error('Error cargando servidores:', err)
-  //   });
-  // }
 }

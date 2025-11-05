@@ -1,17 +1,24 @@
 <?php
-
+// config/cors.php
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'google-auth/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout', 'google-auth/*'],
+
     'allowed_methods' => ['*'],
-    'allowed_origins' => [
-        'http://localhost:4200',
-        'http://localhost:3000',
-        'http://127.0.0.1:4200',
-        'http://127.0.0.1:3000'
+
+    'allowed_origins' => ['https://localhost'],
+
+    'allowed_headers' => [
+        'Content-Type', 
+        'X-Requested-With', 
+        'Accept', 
+        'Authorization', 
+        'X-XSRF-TOKEN',
+        'X-CSRF-TOKEN'
     ],
-    'allowed_origins_patterns' => [],
-    'allowed_headers' => ['*'],
-    'exposed_headers' => [],
+
+    'exposed_headers' => ['Authorization'],
+
     'max_age' => 0,
+
     'supports_credentials' => true,
 ];

@@ -1,23 +1,33 @@
-FROM node:20-alpine
+# Etapa 1: Construcción del frontend Angular
+FROM node:20-alpine AS build
 
-# Crear directorio de la aplicación
-WORKDIR /app
+# Establecer directorio de trabajo
+WORKDIR /usr/src/app
 
-# Instalar Angular CLI globalmente
-RUN npm install -g @angular/cli@latest
-
-# Copiar package.json y package-lock.json
+# Copiar archivos de configuración de npm
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm install
+# Instalar dependencias (usa npm ci para builds reproducibles)
+RUN npm ci
 
-# Copiar el código fuente de la aplicación
+# Copiar el resto del código fuente
 COPY . .
 
-# Exponer puerto para desarrollo de Angular
-EXPOSE 4200
+# Construir la aplicación en modo producción
+RUN npm run build -- --configuration=production
 
-# Comando para iniciar Angular en modo desarrollo con escucha en todas las interfaces
-CMD ["ng", "serve", "--host", "0.0.0.0", "--poll=2000"]
+# Etapa 2: Servir con Nginx
+FROM nginx:1.25-alpine
 
+# Copiar el build de Angular al directorio de Nginx
+COPY --from=build /usr/src/app/dist/frontend/browser /usr/share/nginx/html
+
+# Copiar configuración de Nginx y certificados
+COPY ./nginx/conf.d/app.config /etc/nginx/conf.d/default.conf
+COPY ./nginx/ssl /etc/nginx/ssl
+
+# Instalar utilidades
+RUN apk add --no-cache bash openssl curl
+
+EXPOSE 80 443
+CMD ["nginx", "-g", "daemon off;"]

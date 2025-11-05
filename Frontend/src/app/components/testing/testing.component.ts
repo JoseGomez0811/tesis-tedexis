@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, ViewChild, ElementRef } from '@angular/core';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgForOf } from '@angular/common';
 import { Router } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
+
 
 @Component({
   selector: 'app-testing',
@@ -65,9 +66,17 @@ export class TestingComponent implements OnInit {
   alertMessage = '';
   isSubmitting = false; // Nueva variable para controlar estado de envío
 
+  @ViewChild('sendingLogContainer') sendingLogContainer!: ElementRef;
+
+  sendingLogs: string[] = [];
+  showSendingDialog = false;
+
+
   constructor(
     private apiService: ApiService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cd: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {}
 
   closeAlert() {
@@ -83,6 +92,52 @@ export class TestingComponent implements OnInit {
       this.alertVisible = false;
     }, 4000);
   }
+
+  // Añade un log y fuerza detección dentro de Angular zone
+  addLog(message: string) {
+    // Ejecutar dentro de NgZone para asegurar actualización de UI cuando usamos await/async
+    this.ngZone.run(() => {
+      this.sendingLogs.push(message);
+      // limitar historial (opcional)
+      if (this.sendingLogs.length > 200) {
+        this.sendingLogs.shift();
+      }
+      // Forzar detección y scrollear
+      this.cd.detectChanges();
+      this.scrollLogsToBottom();
+    });
+  }
+
+  scrollLogsToBottom() {
+    try {
+      if (this.sendingLogContainer && this.sendingLogContainer.nativeElement) {
+        const el = this.sendingLogContainer.nativeElement as HTMLElement;
+        // Dejar un pequeño timeout para asegurar que el nuevo node está renderizado
+        setTimeout(() => {
+          el.scrollTop = el.scrollHeight;
+        }, 50);
+      }
+    } catch (e) {
+      // no bloquear si falla
+      console.warn('scroll error', e);
+    }
+  }
+
+  trackByLogIndex(index: number): number {
+    return index;
+  }
+
+  closeSendingDialog() {
+    this.showSendingDialog = false;
+    this.sendingLogs = [];
+  }
+
+  // Getter para mostrar contador simple (puedes personalizar)
+  get sendingLogsCountText(): string {
+    // ejemplo: "3 logs"
+    return `${this.sendingLogs.length} mensajes`;
+  }
+
 
   ngOnInit(): void {
     this.apiService.getServers().subscribe({
@@ -338,8 +393,13 @@ export class TestingComponent implements OnInit {
       return;
     }
 
+    // al iniciar envío:
     this.isSubmitting = true;
-    this.showAlert('success', 'Iniciando envío de simulaciones...');
+    //this.showAlert('success', 'Enviando simulaciones...'); // si quieres mantener el toast inicial
+    this.sendingLogs = [];            // limpiar logs previos
+    this.showSendingDialog = true;    // mostrar el dialog de logs
+    this.addLog(`🔔 Proceso iniciado: ${new Date().toLocaleString()}`);
+    //this.showAlert('success', 'Iniciando envío de simulaciones...');
 
     // Procesar los números ingresados antes de enviar
     this.processPhoneNumbers();
@@ -384,7 +444,7 @@ export class TestingComponent implements OnInit {
       typeConnection: connectionType,
       nameQueue: this.nombreCola,
       id_connection: connectionID,
-      id_db: dbId,
+      // id_db: dbId,
     };
 
     try {
@@ -396,13 +456,11 @@ export class TestingComponent implements OnInit {
           return;
         }
 
-        let successfulSimulations = 0;
-        let failedSimulations = 0;
+        const allSimulations: any[] = [];
 
-        // Ejecutar simulaciones de forma secuencial
+        // Crear todas las simulaciones primero (sin enviarlas aún)
         for (let index = 0; index < this.phoneNumbers.length; index++) {
           const num = this.phoneNumbers[index];
-
           const simulationData: any = {
             ...simulationDataBase,
             requestId: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
@@ -413,125 +471,117 @@ export class TestingComponent implements OnInit {
             number: this.cantidad,
             shortCode: Number(this.sc),
             encoding: this.encoding,
-            id_user: matchedUser ? matchedUser.id : null,
-            description: `El usuario ejecutó una simulación:
-                    Host = ${simulationDataBase.hostServer || 'Desconocido'}, 
-                    Puerto = ${simulationDataBase.portConnection || 'Desconocido'},
-                    Nombre Cola = ${simulationDataBase.nameQueue || 'Desconocido'},
-                    Número de Teléfono = ${num.trim() || 'Desconocido'},
-                    Short Code = ${Number(this.sc) || 'Desconocido'}`,
+            // id_user: matchedUser ? matchedUser.id : null,
+            // description: `Simulación múltiple (${index + 1}) enviada en un solo lote.`,
           };
 
-          console.log(`🚀 Enviando simulación ${index + 1}/${this.phoneNumbers.length} con número: ${num}`);
-          
-          try {
-            // 👉 Enviar y almacenar simulación (un solo endpoint)
-            const res = await lastValueFrom(this.apiService.sendSimulation(simulationData));
-            console.log(`✅ Simulación ${index + 1} enviada y almacenada:`, res);
-            successfulSimulations++;
-
-          } catch (error) {
-            console.error(`❌ Error enviando simulación ${index + 1}:`, error);
-            failedSimulations++;
-          }
-
-          // Pequeña pausa entre requests
-          if (index < this.phoneNumbers.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
+          allSimulations.push(simulationData);
         }
 
-        // Resultado final
-        if (failedSimulations === 0) {
-          this.showAlert('success', `✅ Todas las ${successfulSimulations} simulaciones se completaron exitosamente.`);
-        } else {
-          this.showAlert('error', `⚠️ Completadas: ${successfulSimulations}, Fallidas: ${failedSimulations}`);
+        // 🔸 Crear payload unificado
+        const batchPayload = {
+          simulations: allSimulations,
+          total: allSimulations.length,
+          timestamp: new Date().toISOString(),
+        };
+
+        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones en un solo POST...`);
+
+        try {
+          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
+          this.showAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones en un único POST.`);
+        } catch (error) {
+          console.error('❌ Error enviando simulaciones agrupadas:', error);
+          this.showAlert('error', 'Error enviando simulaciones agrupadas.');
         }
 
         this.resetForm();
 
+
       // 🔹 SIMULACIÓN DE REUSO
-      }else if (this.showReusoFields) {
-          if (!this.selectedDB || !this.selectedCollection) {
-            this.showAlert('error', 'Debe seleccionar una base de datos y una colección.');
-            this.isSubmitting = false;
-            return;
-          }
-
-          if (!this.cantidadReuso || this.cantidadReuso <= 0) {
-            this.showAlert('error', 'Debe indicar una cantidad válida de registros a reutilizar.');
-            this.isSubmitting = false;
-            return;
-          }
-
-          // Cargar todos los documentos de la colección seleccionada
-          const dbObj = this.db.find(d => d.name === this.selectedDB);
-          const collectionName = this.selectedCollection;
-
-          if (!dbObj || !dbObj.id) {
-            this.showAlert('error', 'No se encontró la base de datos seleccionada.');
-            this.isSubmitting = false;
-            return;
-          }
-
-          let allDocuments: any[] = [];
-          try {
-            const res = await lastValueFrom(this.apiService.getCollectionData(dbObj.id, collectionName));
-            allDocuments = Array.isArray(res) ? res : (res.data ?? []);
-          } catch (err) {
-            console.error('❌ Error obteniendo los documentos:', err);
-            this.showAlert('error', 'Error al cargar los registros de la colección.');
-            this.isSubmitting = false;
-            return;
-          }
-
-          if (allDocuments.length === 0) {
-            this.showAlert('error', 'La colección seleccionada está vacía.');
-            this.isSubmitting = false;
-            return;
-          }
-
-          // Seleccionar registros aleatorios sin repetición
-          const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
-
-          let successfulSimulations = 0;
-          let failedSimulations = 0;
-
-          for (let i = 0; i < selectedDocs.length; i++) {
-            const doc = selectedDocs[i];
-
-            const simulationData: any = {
-              ...simulationDataBase,
-              requestId: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-              systemID: doc.SystemID || doc.systemId || '',
-              password: this.password || doc.password || '',
-              phoneNumber: doc.PhoneNumber || doc.submitSm?.destAddress || '',
-              message: doc.Text || doc.submitSm?.shortMessageString || '',
-              number: this.cantidadReuso,
-              shortCode: Number(doc.ShortCode || doc.shortCode || doc.sc || 0),
-              encoding: doc.Encoding || doc.submitSm?.dataCoding || '0',
-              sarSegmentSeqNum: doc.SAR_SEGMENT_SEQNUM || 0,
-              sarMsgRefNum: doc.SAR_MSG_REF_NUM || 0,
-              sarTotalSegments: doc.SAR_TOTAL_SEGMENTS || 0,
-              id_user: matchedUser ? matchedUser.id : null,
-              description: `Simulación reuso - ${this.cantidadReuso} registros`,
-            };
-
-            try {
-              await lastValueFrom(this.apiService.sendSimulation(simulationData));
-              successfulSimulations++;
-              console.log(`✅ Simulación ${i + 1}/${selectedDocs.length} enviada con éxito`);
-            } catch (error) {
-              failedSimulations++;
-              console.error(`❌ Error en simulación ${i + 1}:`, error);
-            }
-          }
-
-          this.showAlert(
-            failedSimulations === 0 ? 'success' : 'error',
-            `Simulación completada. Éxitos: ${successfulSimulations}, Fallos: ${failedSimulations}`
-          );
+      } else if (this.showReusoFields) {
+        if (!this.selectedDB || !this.selectedCollection) {
+          this.showAlert('error', 'Debe seleccionar una base de datos y una colección.');
+          this.isSubmitting = false;
+          return;
         }
+
+        if (!this.cantidadReuso || this.cantidadReuso <= 0) {
+          this.showAlert('error', 'Debe indicar una cantidad válida de registros a reutilizar.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Cargar todos los documentos de la colección seleccionada
+        const dbObj = this.db.find(d => d.name === this.selectedDB);
+        const collectionName = this.selectedCollection;
+
+        if (!dbObj || !dbObj.id) {
+          this.showAlert('error', 'No se encontró la base de datos seleccionada.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        let allDocuments: any[] = [];
+        try {
+          const res = await lastValueFrom(this.apiService.getCollectionData(dbObj.id, collectionName));
+          allDocuments = Array.isArray(res) ? res : (res.data ?? []);
+        } catch (err) {
+          console.error('❌ Error obteniendo los documentos:', err);
+          this.showAlert('error', 'Error al cargar los registros de la colección.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        if (allDocuments.length === 0) {
+          this.showAlert('error', 'La colección seleccionada está vacía.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // 🔸 Seleccionar registros aleatorios sin repetición
+        const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
+
+        // 🔹 Crear todas las simulaciones dentro de un solo array JSON
+        const allSimulations: any[] = selectedDocs.map((doc, i) => ({
+          ...simulationDataBase,
+          requestId: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+          systemID: doc.SystemID || doc.systemId || '',
+          password: this.password || doc.password || '',
+          phoneNumber: doc.PhoneNumber || doc.submitSm?.destAddress || '',
+          message: doc.Text || doc.submitSm?.shortMessageString || '',
+          number: this.cantidadReuso,
+          shortCode: Number(doc.ShortCode || doc.shortCode || doc.sc || 0),
+          encoding: doc.Encoding || doc.submitSm?.dataCoding || '0',
+          sarSegmentSeqNum: doc.SAR_SEGMENT_SEQNUM || 0,
+          sarMsgRefNum: doc.SAR_MSG_REF_NUM || 0,
+          sarTotalSegments: doc.SAR_TOTAL_SEGMENTS || 0,
+          // id_user: matchedUser ? matchedUser.id : null,
+          // description: `Simulación reuso - ${this.cantidadReuso} registros`,
+        }));
+
+        // 🔸 Crear payload unificado
+        const batchPayload = {
+          simulations: allSimulations,
+          total: allSimulations.length,
+          timestamp: new Date().toISOString(),
+        };
+
+        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones en un solo POST...`);
+
+        try {
+          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
+          this.showAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones en un único POST.`);
+        } catch (error) {
+          console.error('❌ Error enviando simulaciones agrupadas:', error);
+          this.showAlert('error', 'Error enviando simulaciones agrupadas.');
+        }
+
+        this.resetForm();
+      }
+
 
 
     } catch (error) {
@@ -539,6 +589,12 @@ export class TestingComponent implements OnInit {
       this.showAlert('error', 'Error en el proceso de simulación');
     } finally {
       this.isSubmitting = false;
+      // auto ocultar dialog después de 2s
+      setTimeout(() => {
+        this.showSendingDialog = false;
+        this.sendingLogs = [];
+      }, 2000);
     }
+
   }
 }

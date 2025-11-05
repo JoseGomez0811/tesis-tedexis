@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CollectionsDBController;
 use App\Http\Controllers\Api\LogsController;
 use App\Http\Controllers\Api\UsersController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 Route::prefix('v1')->group(function () {
     // --- SERVERS ---
@@ -51,18 +52,80 @@ Route::prefix('v1')->group(function () {
     Route::get('users', [UsersController::class, 'index']);
 });
 
-Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
-    return response()->json($request->user());
+// Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
+//     return response()->json($request->user());
+// });
+
+// Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
+//     $user = $request->user();
+//     return response()->json([
+//         'id' => $user->id,
+//         'name' => $user->name,
+//         'email' => $user->email,
+//         'authorization_status' => $user->authorization_status,
+//         'role' => $user->role,
+//         'avatar' => $user->avatar,
+//     ]);
+// });
+
+// Debug endpoint (mantener con auth)
+Route::middleware('auth:sanctum')->get('/debug/token', function (Request $request) {
+    $user = $request->user();
+    
+    Log::info('Debug Token Request', [
+        'user_id' => $user?->id,
+        'user_email' => $user?->email,
+        'token_preview' => substr($request->bearerToken() ?? 'NO_TOKEN', 0, 20),
+        'headers' => $request->headers->all(),
+    ]);
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Token válido',
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'authorization_status' => $user->authorization_status,
+        ],
+        'token_info' => [
+            'bearer_token_present' => !!$request->bearerToken(),
+            'token_preview' => substr($request->bearerToken() ?? '', 0, 20) . '...',
+        ]
+    ]);
 });
 
-// Rutas para gestión de permisos de usuarios (API)
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('admin/users/pending', [GoogleController::class, 'getPendingUsers']);
-    Route::get('admin/users/all', [GoogleController::class, 'getAllUsers']);
-    Route::post('admin/users/{userId}/authorize', [GoogleController::class, 'authorizeUser']);
-    Route::post('admin/users/{userId}/reject', [GoogleController::class, 'rejectUser']);
-    Route::post('/admin/users/{userId}/make-admin', [GoogleController::class, 'makeAdmin']);
-    Route::post('/admin/users/{id}/remove-admin', [GoogleController::class, 'removeAdmin']);
+// Debug endpoint para CSRF
+Route::middleware('auth:sanctum')->post('/debug/csrf', function (Request $request) {
+    Log::info('Debug CSRF Request', [
+        'headers' => $request->headers->all(),
+        'csrf_token_header' => $request->header('X-CSRF-TOKEN'),
+        'xsrf_token_header' => $request->header('X-XSRF-TOKEN'),
+        'cookie_csrf' => $request->cookie('XSRF-TOKEN'),
+        'all_cookies' => $request->cookies->all(),
+    ]);
+    
+    return response()->json([
+        'success' => true,
+        'csrf_token_header' => $request->header('X-CSRF-TOKEN') ? substr($request->header('X-CSRF-TOKEN'), 0, 50) . '...' : 'NO',
+        'xsrf_token_header' => $request->header('X-XSRF-TOKEN') ? substr($request->header('X-XSRF-TOKEN'), 0, 50) . '...' : 'NO',
+        'cookie_csrf' => $request->cookie('XSRF-TOKEN') ? substr($request->cookie('XSRF-TOKEN'), 0, 50) . '...' : 'NO',
+        'headers_received' => $request->headers->all(),
+    ]);
+});
 
-
+// Rutas de administración - PROTEGIDAS con auth, admin y rate limiting
+Route::middleware(['auth:sanctum', 'admin', 'throttle:60,1'])->prefix('admin')->group(function () {
+    // Gestión de usuarios
+    Route::get('users/pending', [GoogleController::class, 'getPendingUsers']);
+    Route::get('users/all', [GoogleController::class, 'getAllUsers']);
+    
+    // Acciones sobre usuarios (más restrictivas: 30 peticiones por minuto)
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::post('users/{userId}/authorize', [GoogleController::class, 'authorizeUser']);
+        Route::post('users/{userId}/reject', [GoogleController::class, 'rejectUser']);
+        Route::post('users/{userId}/make-admin', [GoogleController::class, 'makeAdmin']);
+        Route::post('users/{userId}/remove-admin', [GoogleController::class, 'removeAdmin']);
+    });
 });

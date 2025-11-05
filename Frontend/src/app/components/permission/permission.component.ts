@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
 import { AuthService, User } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
 
@@ -11,7 +10,7 @@ type NotificationType = 'success' | 'error';
 @Component({
     selector: 'app-permission',
     standalone: true,
-    imports: [CommonModule, FormsModule, HttpClientModule],
+    imports: [CommonModule, FormsModule],
     templateUrl: './permission.component.html',
 })
 export class PermissionComponent implements OnInit {
@@ -24,13 +23,6 @@ export class PermissionComponent implements OnInit {
     notificationType: NotificationType = 'success';
     loading: boolean = false;
 
-    user: any = null;
-    db: any = null;
-
-  googleUserData = {
-    fullName: '',
-    email: '',
-  };
 
     constructor(
         private apiService: ApiService,
@@ -108,62 +100,12 @@ export class PermissionComponent implements OnInit {
                     user.authorization_status = 'authorized';
                     this.filterUsers();
                     this.showNotificationMessage(`Petición de ${user.name} aceptada`, 'success');
+                    // Registrar log de forma asíncrona
+                    this.logAdminAction(`Se le autorizó el acceso al usuario {user}`, user.name);
                 } else {
                     this.showNotificationMessage('Error al autorizar usuario', 'error');
                 }
                 this.loading = false;
-
-                const currentUser = this.authService.getUser();
-
-                if (currentUser) {
-                this.user = currentUser;
-                this.googleUserData = {
-                    fullName: currentUser.name || '',
-                    email: currentUser.email || '',
-                };
-                } else {
-                this.authService.logout();
-                return; // Detiene la ejecución si no hay usuario
-                }
-
-                // 🔹 Obtenemos la lista de usuarios desde la API
-                this.apiService.getUsers().subscribe({
-                next: (users: any[]) => {
-                    // Busca el usuario cuyo nombre coincida con el usuario actual
-                    const matchedUser = users.find(
-                    (u) => u.name === this.googleUserData.fullName
-                    );
-
-                    if (matchedUser) {
-                        const id_user = matchedUser.id;
-                        
-                        const logData = {
-                        id_user: id_user,
-                        id_server: null,
-                        id_connection: null,
-                        id_db: null,
-                        id_simulation: null,
-                        description: `Se le autorizó el acceso al usuario ${user.name}`
-                        };
-
-
-                        console.log('🟢 Log listo para enviar:', logData);
-
-                        // ✅ Enviar los logs al backend
-                        this.apiService.storeLogs(logData).subscribe({
-                            next: (res) => console.log('✅ Log guardado correctamente:', res),
-                            error: (err) => console.error('❌ Error al guardar log:', err),
-                        });
-
-                    
-                    } else {
-                    console.warn('⚠️ No se encontró el usuario en la base de datos');
-                    }
-                },
-                error: (err) => {
-                    console.error('❌ Error al obtener usuarios:', err);
-                },
-                });
             },
             error: (error) => {
                 console.error('Error autorizando usuario:', error);
@@ -185,62 +127,12 @@ export class PermissionComponent implements OnInit {
                     user.authorization_status = 'rejected';
                     this.filterUsers();
                     this.showNotificationMessage(`Petición de ${user.name} rechazada`, 'error');
+                    // Registrar log de forma asíncrona
+                    this.logAdminAction(`Se le denegó la petición de acceso al usuario {user}`, user.name);
                 } else {
                     this.showNotificationMessage('Error al rechazar usuario', 'error');
                 }
                 this.loading = false;
-
-                const currentUser = this.authService.getUser();
-
-                if (currentUser) {
-                this.user = currentUser;
-                this.googleUserData = {
-                    fullName: currentUser.name || '',
-                    email: currentUser.email || '',
-                };
-                } else {
-                this.authService.logout();
-                return; // Detiene la ejecución si no hay usuario
-                }
-
-                // 🔹 Obtenemos la lista de usuarios desde la API
-                this.apiService.getUsers().subscribe({
-                next: (users: any[]) => {
-                    // Busca el usuario cuyo nombre coincida con el usuario actual
-                    const matchedUser = users.find(
-                    (u) => u.name === this.googleUserData.fullName
-                    );
-
-                    if (matchedUser) {
-                        const id_user = matchedUser.id;
-                        
-                        const logData = {
-                        id_user: id_user,
-                        id_server: null,
-                        id_connection: null,
-                        id_db: null,
-                        id_simulation: null,
-                        description: `Se le denegó la petición de acceso al usuario ${user.name}`,
-                        };
-
-
-                        console.log('🟢 Log listo para enviar:', logData);
-
-                        // ✅ Enviar los logs al backend
-                        this.apiService.storeLogs(logData).subscribe({
-                            next: (res) => console.log('✅ Log guardado correctamente:', res),
-                            error: (err) => console.error('❌ Error al guardar log:', err),
-                        });
-
-                    
-                    } else {
-                    console.warn('⚠️ No se encontró el usuario en la base de datos');
-                    }
-                },
-                error: (err) => {
-                    console.error('❌ Error al obtener usuarios:', err);
-                },
-                });
             },
             error: (error) => {
                 console.error('Error rechazando usuario:', error);
@@ -268,6 +160,31 @@ export class PermissionComponent implements OnInit {
         return user.id;
     }
 
+    // Método privado para registrar logs de acciones de administrador
+    private logAdminAction(action: string, targetUserName: string): void {
+        const currentUser = this.authService.getUser();
+        if (!currentUser) {
+            console.warn('⚠️ No hay usuario autenticado para registrar log');
+            return;
+        }
+
+        // Usar el usuario actual directamente sin necesidad de buscar en la API
+        const logData = {
+            id_user: currentUser.id,
+            id_server: null,
+            id_connection: null,
+            id_db: null,
+            id_simulation: null,
+            description: action.replace('{user}', targetUserName)
+        };
+
+        // Enviar log de forma asíncrona sin bloquear la UI
+        this.apiService.storeLogs(logData).subscribe({
+            next: () => console.log('✅ Log guardado correctamente'),
+            error: (err) => console.error('❌ Error al guardar log:', err),
+        });
+    }
+
     handleMakeAdmin(userId: number): void {
         const user = this.users.find(u => u.id === userId);
         if (!user) return;
@@ -275,73 +192,23 @@ export class PermissionComponent implements OnInit {
         this.loading = true;
         this.authService.makeAdmin(userId).subscribe({
             next: (response) => {
-            if (response.success) {
-                user.role = 'admin';
-                this.showNotificationMessage(`${user.name} ahora es administrador`, 'success');
-            } else {
-                this.showNotificationMessage('Error al asignar rol de administrador', 'error');
-            }
-            this.loading = false;
-
-            const currentUser = this.authService.getUser();
-
-                if (currentUser) {
-                this.user = currentUser;
-                this.googleUserData = {
-                    fullName: currentUser.name || '',
-                    email: currentUser.email || '',
-                };
+                if (response.success) {
+                    user.role = 'admin';
+                    this.showNotificationMessage(`${user.name} ahora es administrador`, 'success');
+                    // Registrar log de forma asíncrona
+                    this.logAdminAction(`Se le concedieron los permisos de administrador al usuario {user}`, user.name);
                 } else {
-                this.authService.logout();
-                return; // Detiene la ejecución si no hay usuario
+                    this.showNotificationMessage('Error al asignar rol de administrador', 'error');
                 }
-
-                // 🔹 Obtenemos la lista de usuarios desde la API
-                this.apiService.getUsers().subscribe({
-                next: (users: any[]) => {
-                    // Busca el usuario cuyo nombre coincida con el usuario actual
-                    const matchedUser = users.find(
-                    (u) => u.name === this.googleUserData.fullName
-                    );
-
-                    if (matchedUser) {
-                        const id_user = matchedUser.id;
-                        
-                        const logData = {
-                        id_user: id_user,
-                        id_server: null,
-                        id_connection: null,
-                        id_db: null,
-                        id_simulation: null,
-                        description: `Se le concedieron los permisos de administrador al usuario ${user.name}`
-                        };
-
-
-                        console.log('🟢 Log listo para enviar:', logData);
-
-                        // ✅ Enviar los logs al backend
-                        this.apiService.storeLogs(logData).subscribe({
-                            next: (res) => console.log('✅ Log guardado correctamente:', res),
-                            error: (err) => console.error('❌ Error al guardar log:', err),
-                        });
-
-                    
-                    } else {
-                    console.warn('⚠️ No se encontró el usuario en la base de datos');
-                    }
-                },
-                error: (err) => {
-                    console.error('❌ Error al obtener usuarios:', err);
-                },
-            });
+                this.loading = false;
             },
             error: (error) => {
-            console.error('Error haciendo admin:', error);
-            this.showNotificationMessage('Error al hacer admin', 'error');
-            this.loading = false;
+                console.error('Error haciendo admin:', error);
+                this.showNotificationMessage('Error al hacer admin', 'error');
+                this.loading = false;
             }
         });
-        }
+    }
 
     handleRemoveAdmin(userId: number): void {
         const user = this.users.find(u => u.id === userId);
@@ -350,71 +217,20 @@ export class PermissionComponent implements OnInit {
         this.loading = true;
         this.authService.removeAdmin(userId).subscribe({
             next: (response) => {
-            if (response.success) {
-                user.role = 'user';
-                this.showNotificationMessage(`${user.name} ya no es administrador`, 'success');
-            } else {
-                this.showNotificationMessage('Error al quitar rol de administrador', 'error');
-            }
-            this.loading = false;
+                if (response.success) {
+                    user.role = 'user';
+                    this.showNotificationMessage(`${user.name} ya no es administrador`, 'success');
+                    // Registrar log de forma asíncrona
+                    this.logAdminAction(`Se le removió los permisos de administrador al usuario {user}`, user.name);
+                } else {
+                    this.showNotificationMessage('Error al quitar rol de administrador', 'error');
+                }
+                this.loading = false;
             },
             error: (error) => {
-            console.error('Error quitando admin:', error);
-            this.showNotificationMessage('Error al quitar admin', 'error');
-            this.loading = false;
-
-            const currentUser = this.authService.getUser();
-
-                if (currentUser) {
-                this.user = currentUser;
-                this.googleUserData = {
-                    fullName: currentUser.name || '',
-                    email: currentUser.email || '',
-                };
-                } else {
-                this.authService.logout();
-                return; // Detiene la ejecución si no hay usuario
-                }
-
-                // 🔹 Obtenemos la lista de usuarios desde la API
-                this.apiService.getUsers().subscribe({
-                next: (users: any[]) => {
-                    // Busca el usuario cuyo nombre coincida con el usuario actual
-                    const matchedUser = users.find(
-                    (u) => u.name === this.googleUserData.fullName
-                    );
-
-                    if (matchedUser) {
-                        const id_user = matchedUser.id;
-                        
-                        const logData = {
-                        id_user: id_user,
-                        id_server: null,
-                        id_connection: null,
-                        id_db: null,
-                        id_simulation: null,
-                        description: `Se le removió los permisos de administrador al usuario ${user.name}`
-                        };
-
-
-                        console.log('🟢 Log listo para enviar:', logData);
-
-                        // ✅ Enviar los logs al backend
-                        this.apiService.storeLogs(logData).subscribe({
-                            next: (res) => console.log('✅ Log guardado correctamente:', res),
-                            error: (err) => console.error('❌ Error al guardar log:', err),
-                        });
-
-                    
-                    } else {
-                    console.warn('⚠️ No se encontró el usuario en la base de datos');
-                    }
-                },
-                error: (err) => {
-                    console.error('❌ Error al obtener usuarios:', err);
-                },
-            });
-
+                console.error('Error quitando admin:', error);
+                this.showNotificationMessage('Error al quitar admin', 'error');
+                this.loading = false;
             }
         });
     }
@@ -431,62 +247,12 @@ export class PermissionComponent implements OnInit {
                     user.authorization_status = 'rejected';
                     this.filterUsers();
                     this.showNotificationMessage(`Petición de ${user.name} removida`, 'error');
+                    // Registrar log de forma asíncrona
+                    this.logAdminAction(`Se le removió la autorización de acceso al usuario {user}`, user.name);
                 } else {
                     this.showNotificationMessage('Error al remover usuario', 'error');
                 }
                 this.loading = false;
-
-                const currentUser = this.authService.getUser();
-
-                if (currentUser) {
-                this.user = currentUser;
-                this.googleUserData = {
-                    fullName: currentUser.name || '',
-                    email: currentUser.email || '',
-                };
-                } else {
-                this.authService.logout();
-                return; // Detiene la ejecución si no hay usuario
-                }
-
-                // 🔹 Obtenemos la lista de usuarios desde la API
-                this.apiService.getUsers().subscribe({
-                next: (users: any[]) => {
-                    // Busca el usuario cuyo nombre coincida con el usuario actual
-                    const matchedUser = users.find(
-                    (u) => u.name === this.googleUserData.fullName
-                    );
-
-                    if (matchedUser) {
-                        const id_user = matchedUser.id;
-                        
-                        const logData = {
-                        id_user: id_user,
-                        id_server: null,
-                        id_connection: null,
-                        id_db: null,
-                        id_simulation: null,
-                        description: `Se le removió la autorización de acceso al usuario ${user.name}`
-                        };
-
-
-                        console.log('🟢 Log listo para enviar:', logData);
-
-                        // ✅ Enviar los logs al backend
-                        this.apiService.storeLogs(logData).subscribe({
-                            next: (res) => console.log('✅ Log guardado correctamente:', res),
-                            error: (err) => console.error('❌ Error al guardar log:', err),
-                        });
-
-                    
-                    } else {
-                    console.warn('⚠️ No se encontró el usuario en la base de datos');
-                    }
-                },
-                error: (err) => {
-                    console.error('❌ Error al obtener usuarios:', err);
-                },
-                });
             },
             error: (error) => {
                 console.error('Error removiendo autorización:', error);

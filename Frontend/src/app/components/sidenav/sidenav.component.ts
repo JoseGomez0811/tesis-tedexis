@@ -1,8 +1,9 @@
 import { Component, Output, EventEmitter, OnInit, HostListener } from '@angular/core';
-import { navbarData } from './nav-data';
-import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule, NgClass } from '@angular/common';
-import { AuthService } from '../../services/auth.service';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { navbarData } from './nav-data';
+import { AuthService, User } from '../../services/auth.service';
+import { ApiService } from '../../services/api.service';
 
 interface SideNavToggle {
   screenWidth: number;
@@ -11,53 +12,120 @@ interface SideNavToggle {
 
 @Component({
   selector: 'app-sidenav',
-  imports: [RouterLink, NgClass, RouterLinkActive, CommonModule ],
+  standalone: true,
+  imports: [CommonModule, RouterLink, RouterLinkActive, NgClass],
   templateUrl: './sidenav.component.html',
-  styleUrl: './sidenav.component.css'
+  styleUrls: ['./sidenav.component.css']
 })
 export class SidenavComponent implements OnInit {
-  @Output() onToggleSideNav: EventEmitter<SideNavToggle> = new EventEmitter();
+  @Output() onToggleSideNav = new EventEmitter<SideNavToggle>();
+
   collapsed = false;
   screenWidth = 0;
-  navData = navbarData;
+  navData: any[] = [];
+  user: User | null = null;
+  googleUserData = { fullName: '', email: '' };
+  users: User[] = [];
+  loading = false;
 
   constructor(
-        private authService: AuthService,
-    ) {}
+    private apiService: ApiService,
+    private authService: AuthService
+  ) {}
 
-  @HostListener('window:resize', ['$event'])
-  onResize(event: any) {
+  @HostListener('window:resize')
+  onResize() {
     this.screenWidth = window.innerWidth;
     if (this.screenWidth <= 768) {
       this.collapsed = true;
-      this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
+      this.emitToggle();
     }
   }
 
   ngOnInit(): void {
+    this.loadUsers();
     this.screenWidth = window.innerWidth;
-    // Emitir el estado inicial para asegurar que el BodyComponent
-    // tenga los valores correctos desde el inicio
-    this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
-    
-    // Colapsar automáticamente en pantallas pequeñas al iniciar
+
+    const currentUser = this.authService.getUser();
+    if (!currentUser) {
+      this.authService.logout();
+      return;
+    }
+
+    this.user = currentUser;
+    this.googleUserData = {
+      fullName: currentUser.name || '',
+      email: currentUser.email || '',
+    };
+
+    this.loadNavData();
+    this.emitToggle();
+
     if (this.screenWidth <= 768) {
       this.collapsed = true;
-      this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
+      this.emitToggle();
     }
+  }
+
+  /** 🔹 Carga todos los usuarios (solo para mantener lista actualizada) */
+  private loadUsers(): void {
+    this.loading = true;
+    this.authService.getAllUsers().subscribe({
+      next: (response) => {
+        if (response.success && response.data) this.users = response.data;
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error cargando usuarios:', error);
+        this.loading = false;
+      }
+    });
+  }
+
+  /** 🔹 Filtra los ítems del navbar según el rol del usuario */
+  private loadNavData(): void {
+    this.apiService.getUsers().subscribe({
+      next: (users: User[]) => {
+        const matchedUser = users.find(u => u.name === this.googleUserData.fullName);
+
+        if (!matchedUser) {
+          console.warn('⚠️ No se encontró el usuario en la base de datos');
+          return;
+        }
+
+        const role = matchedUser.role;
+        console.log('Usuario actual:', matchedUser.name, '| Rol:', role);
+
+        this.navData = navbarData.filter(item =>
+          item.role === 'all' || item.role === role
+        );
+
+        console.table(this.navData.map(i => ({
+          label: i.label, role: i.role
+        })));
+      },
+      error: (err) => console.error('❌ Error al obtener usuarios:', err)
+    });
   }
 
   toggleCollapse(): void {
     this.collapsed = !this.collapsed;
-    this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
+    this.emitToggle();
   }
 
   closeSidenav(): void {
     this.collapsed = true;
-    this.onToggleSideNav.emit({ collapsed: this.collapsed, screenWidth: this.screenWidth });
+    this.emitToggle();
   }
 
-  logout() {
+  logout(): void {
     this.authService.logout();
+  }
+
+  private emitToggle(): void {
+    this.onToggleSideNav.emit({
+      collapsed: this.collapsed,
+      screenWidth: this.screenWidth
+    });
   }
 }

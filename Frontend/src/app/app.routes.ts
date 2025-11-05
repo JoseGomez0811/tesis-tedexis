@@ -8,6 +8,8 @@ import { AddDBComponent } from './components/addDB/addDB.component';
 import { PermissionComponent } from './components/permission/permission.component';
 import { AddConnectionComponent } from './components/addConnection/addConnection.component';
 import { LogsComponent } from './components/logs/logs.component';
+import { AdminGuard } from './guards/admin.guard';
+import { AuthCallbackComponent } from './components/auth/auth-callback/auth-callback.component';
 
 export const routes: Routes = [
   // Redirigir la raíz al login
@@ -21,6 +23,17 @@ export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent
+  },
+  
+  // Ruta para el callback de autenticación
+  {
+    path: 'auth/callback',
+    component: AuthCallbackComponent
+  },
+  // Alias usado por el backend: 'auth-callback' (sin slash)
+  {
+    path: 'auth-callback',
+    component: AuthCallbackComponent
   },
  
   // Rutas dentro del MainLayout (protegidas)
@@ -50,11 +63,23 @@ export const routes: Routes = [
       },
       {
         path: 'permisos',
-        component: PermissionComponent
+        component: PermissionComponent,
+        canActivate: [AdminGuard]
       },
       {
         path: 'registros',
-        component: LogsComponent
+        component: LogsComponent,
+        canActivate: [AdminGuard]
+      },
+      {
+        path: 'permisos',
+        component: PermissionComponent,
+        canActivate: [AdminGuard] // ✅ solo admins
+      },
+      {
+        path: 'registros',
+        component: LogsComponent,
+        canActivate: [AdminGuard] // ✅ solo admins
       },
       {
         path: '',

@@ -37,6 +37,9 @@ export class AddDBComponent {
   alertType: 'success' | 'error' | null = null;
   alertMessage = '';
 
+  isSaving = false;
+  isDeleting = false;
+
   constructor(
     private apiService: ApiService,
     private authService: AuthService
@@ -111,6 +114,7 @@ export class AddDBComponent {
   }
 
   async deleteDatabase(id: number) {
+    this.isDeleting = true;
     const currentUser = this.authService.getUser();
     let matchedUser: any = null;
 
@@ -142,10 +146,12 @@ export class AddDBComponent {
 
     this.apiService.deleteDatabase(id, id_user).subscribe({
       next: () => {
-        this.showAlert('success', 'Base de datos eliminada con éxito');
+        this.isDeleting = false;
+        this.showAlert('success', 'Base de datos eliminada con éxito ✅');
         this.loadDatabases();
       },
       error: (err) => {
+        this.isDeleting = false;
         console.error('❌ Error al eliminar base de datos:', err);
         this.showAlert('error', 'Error al eliminar base de datos');
       }
@@ -163,6 +169,8 @@ export class AddDBComponent {
       this.isSubmitting = false;
       return;
     }
+
+    this.isSaving = true;
 
     const currentUser = this.authService.getUser();
       let matchedUser: any = null;
@@ -206,6 +214,7 @@ export class AddDBComponent {
         // MODO EDICIÓN
         this.apiService.updateDatabase(this.editingId, payload).subscribe({
           next: (res: any) => {
+            this.isSaving = false;
             this.showAlert('success', 'Base de datos actualizada con éxito');
             this.resetForm();
             this.loadDatabases();
@@ -214,8 +223,10 @@ export class AddDBComponent {
           error: (err) => {
             console.error('❌ Error al actualizar:', err);
             if (err.status === 422) {
+              this.isSaving = false;
               this.showAlert('error', 'Error de validación al actualizar. Revisa los datos.');
             } else {
+              this.isSaving = false;
               this.showAlert('error', 'Error al actualizar la base de datos');
             }
             this.isSubmitting = false;
@@ -225,6 +236,7 @@ export class AddDBComponent {
         // MODO CREAR
         // password es obligatorio para crear, así que en este caso debe incluirse (ya lo validamos arriba)
         if (!payload.password && (!this.password || this.password.trim().length === 0)) {
+          this.isSaving = false;
           this.showAlert('error', 'La contraseña es obligatoria para crear la base de datos.');
           this.isSubmitting = false;
           return;
@@ -234,6 +246,7 @@ export class AddDBComponent {
 
         this.apiService.addDatabase(payload).subscribe({
           next: (res: any) => {
+            this.isSaving = false;
             this.showAlert('success', 'Base de datos registrada con éxito ✅');
             this.resetForm();
             this.loadDatabases();
@@ -242,8 +255,10 @@ export class AddDBComponent {
           error: (err) => {
             console.error('❌ Error al registrar base de datos:', err);
             if (err.status === 422) {
+              this.isSaving = false;
               this.showAlert('error', 'Error de validación. Revisa los datos ingresados.');
             } else {
+              this.isSaving = false;
               this.showAlert('error', `Error al registrar: ${err.message || 'Error desconocido'}`);
             }
             this.isSubmitting = false;
@@ -252,6 +267,7 @@ export class AddDBComponent {
       }
     } catch (err) {
       console.error('❌ onSubmit error:', err);
+      this.isSaving = false;
       this.showAlert('error', 'Ocurrió un error inesperado');
       this.isSubmitting = false;
     }

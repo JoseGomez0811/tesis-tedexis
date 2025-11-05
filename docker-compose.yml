@@ -1,49 +1,9 @@
+version: '3.9'
+
 services:
-  # Backend Laravel (PHP 8.2)
-  app:
-    build: 
-      context: ./Backend
-      dockerfile: Dockerfile
-    container_name: tedexis_laravel_app
-    restart: unless-stopped
-    volumes:
-      - ./Backend:/var/www
-    networks:
-      - laravel
-
-  # Frontend Angular
-  angular:
-    build:
-      context: ./Frontend
-      dockerfile: Dockerfile
-    container_name: tedexis_angular_app
-    restart: unless-stopped
-    command: ng serve --host 0.0.0.0 --port 4200
-    ports:
-      - "4200:4200"
-    volumes:
-      - ./Frontend:/usr/src/app
-    networks:
-      - laravel
-
-  # Servidor Web Nginx
-  nginx:
-    image: nginx:1.25
-    container_name: tedexis_nginx
-    restart: unless-stopped
-    ports:
-      - "8000:80"
-    volumes:
-      - ./Backend:/var/www
-      - ./nginx/conf.d/app.config:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - app
-    networks:
-      - laravel
-
-  # Base de datos PostgreSQL
+  # 🗄️ Base de datos PostgreSQL
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: tedexis_postgres
     restart: unless-stopped
     environment:
@@ -52,20 +12,20 @@ services:
       POSTGRES_PASSWORD: jg081101
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - laravel
     ports:
       - "5433:5432"
+    networks:
+      - laravel
 
-  # Base de datos MongoDB (local opcional)
+  # 🍃 MongoDB
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0-jammy
     container_name: tedexis_mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secret}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-app}
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secret
+      MONGO_INITDB_DATABASE: app
     volumes:
       - mongodb_data:/data/db
     ports:
@@ -73,19 +33,72 @@ services:
     networks:
       - laravel
 
-  # Redis para cache y colas
-  redis:
-    image: redis:7-alpine
-    container_name: tedexis_redis
-    restart: unless-stopped
+  # ⚙️ Angular Builder
+  angular:
+    image: node:20-alpine
+    container_name: tedexis_angular_builder
+    restart: "no"
+    working_dir: /usr/src/app
+    command: sh -c "npm ci --prefer-offline && npm run build -- --configuration=production"
     volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
+      - ./Frontend:/usr/src/app
+      - angular_cache:/usr/src/app/node_modules
     networks:
       - laravel
 
-  # 🧩 Nuevo servicio: Microservicio PHP 7.4 para MongoDB 3.4 remoto
+  # 🧩 Backend Laravel
+  app:
+    build: 
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: tedexis_laravel_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./Backend:/var/www
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://localhost
+      - LOG_CHANNEL=stack
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=db_tedexis
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=jg081101
+      - CACHE_DRIVER=file
+      - SESSION_DRIVER=file
+      - QUEUE_CONNECTION=sync
+    expose:
+      - "9000"
+    networks:
+      - laravel
+    depends_on:
+      - postgres
+
+  # 🧵 Worker de colas
+  queue:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: tedexis_laravel_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600 --timeout=120
+    volumes:
+      - ./Backend:/var/www
+    environment:
+      - APP_ENV=production
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+    networks:
+      - laravel
+    depends_on:
+      - app
+      - postgres
+
+  # 🧩 Microservicio MongoDB Bridge
   mongo-bridge:
     build:
       context: ./MongoBridge
@@ -98,15 +111,38 @@ services:
       - ./MongoBridge/storage/logs:/var/www/storage/logs
     networks:
       - laravel
+    depends_on:
+      - mongodb
 
-
+  # 🌐 Nginx (espera 20 segundos para que todo esté listo)
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: tedexis_nginx
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d/app.config:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./Frontend/dist/frontend/browser:/usr/share/nginx/html:ro
+      - ./Backend:/var/www:ro
+    networks:
+      - laravel
+    depends_on:
+      - app
+      - angular
+    command: >
+      sh -c "sleep 20 && nginx -g 'daemon off;'"
 
 networks:
   laravel:
     driver: bridge
 
 volumes:
-  postgres_data:
-  mongodb_data:
-  redis_data:
   pgdata:
+    driver: local
+  mongodb_data:
+    driver: local
+  angular_cache:
+    driver: local

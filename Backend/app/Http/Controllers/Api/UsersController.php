@@ -21,7 +21,8 @@ class UsersController extends Controller{
             'updated_at',
             'google_id',
             'avatar',
-            'authorization_status',  
+            'authorization_status',
+            'role',  
         ]);
         return response()->json($user);
     }

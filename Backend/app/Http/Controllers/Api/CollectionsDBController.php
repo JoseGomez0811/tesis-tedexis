@@ -14,7 +14,19 @@ class CollectionsDBController extends Controller
 
     public function __construct()
     {
-        $this->mongoBridgeBaseUrl = env('MONGO_BRIDGE_URL', 'http://tedexis_mongo_bridge:8081');
+        $this->mongoBridgeBaseUrl = env('MONGO_BRIDGE_URL', 'https://tedexis_mongo_bridge:8081');
+    }
+
+    /**
+     * 🔧 Configurar cliente HTTP con opciones SSL
+     */
+    private function httpClient()
+    {
+        return Http::withOptions([
+            'verify' => false, // 👈 Deshabilitar verificación SSL para desarrollo
+            'timeout' => 30,
+            'connect_timeout' => 10,
+        ]);
     }
 
     /**
@@ -39,7 +51,8 @@ class CollectionsDBController extends Controller
             $url = "{$this->mongoBridgeBaseUrl}/collections?$query";
             Log::info("➡️ Enviando solicitud a MongoBridge: {$url}");
 
-            $response = Http::timeout(15)->get($url);
+            // 👇 Usar httpClient() con SSL deshabilitado
+            $response = $this->httpClient()->get($url);
             $response->throw();
 
             Log::info("✅ [MongoBridge] Respuesta exitosa (status {$response->status()})");
@@ -91,7 +104,8 @@ class CollectionsDBController extends Controller
             $url = "{$this->mongoBridgeBaseUrl}/collection/{$collection}?$query";
             Log::info("➡️ Enviando solicitud a MongoBridge: {$url}");
 
-            $response = Http::timeout(20)->get($url);
+            // 👇 Usar httpClient() con SSL deshabilitado
+            $response = $this->httpClient()->get($url);
             $response->throw();
 
             Log::info("✅ [MongoBridge] Documentos recibidos correctamente ({$response->status()})");
@@ -143,7 +157,8 @@ class CollectionsDBController extends Controller
             $url = "{$this->mongoBridgeBaseUrl}/collection/{$collection}/{$docId}?$query";
             Log::info("➡️ Enviando solicitud a MongoBridge: {$url}");
 
-            $response = Http::timeout(15)->get($url);
+            // 👇 Usar httpClient() con SSL deshabilitado
+            $response = $this->httpClient()->get($url);
             $response->throw();
 
             Log::info("✅ [MongoBridge] Documento recibido correctamente ({$response->status()})");

@@ -1,19 +1,31 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environments';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private baseUrl = 'http://localhost:8000/api/v1';
-  
-  private httpOptions = {
-    headers: new HttpHeaders({
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    })
-  };
+  // private baseUrl = 'http://localhost:8000/api/v1';
+  // private baseUrl = 'https://localhost/api/v1';
+  private baseUrl = environment.apiUrl;
+
+  // private httpOptions = {
+  //   headers: new HttpHeaders({
+  //     'Content-Type': 'application/json',
+  //     'Accept': 'application/json'
+  //   })
+  // };
+
+  private httpOptionsWithCredentials = {
+  headers: new HttpHeaders({
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }),
+  withCredentials: true
+};
+
 
   constructor(private http: HttpClient) {}
 
@@ -27,7 +39,7 @@ export class ApiService {
   }
 
   updateServer(id: number, data: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/servers/${id}`, data, this.httpOptions); // ✅ Con headers
+    return this.http.put(`${this.baseUrl}/servers/${id}`, data, this.httpOptionsWithCredentials); // ✅ Con headers
   }
 
   // deleteServer(id: number): Observable<any> {
@@ -37,7 +49,7 @@ export class ApiService {
   deleteServer(id: number, id_user: number) {
     return this.http.delete(`${this.baseUrl}/servers/${id}`, {
       body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
-      headers: this.httpOptions.headers
+      headers: this.httpOptionsWithCredentials.headers
     });
   }
 
@@ -50,11 +62,11 @@ export class ApiService {
   addDatabase(data: any): Observable<any> {
     console.log('🚀 Enviando a:', `${this.baseUrl}/databases`);
     console.log('🚀 Datos:', data);
-    return this.http.post(`${this.baseUrl}/databases`, data, this.httpOptions); // ✅ Con headers
+    return this.http.post(`${this.baseUrl}/databases`, data, this.httpOptionsWithCredentials); // ✅ Con headers
   }
 
   updateDatabase(id: number, data: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/databases/${id}`, data, this.httpOptions); // ✅ Con headers
+    return this.http.put(`${this.baseUrl}/databases/${id}`, data, this.httpOptionsWithCredentials); // ✅ Con headers
   }
 
   // deleteDatabase(id: number): Observable<any> {
@@ -64,7 +76,7 @@ export class ApiService {
   deleteDatabase(id: number, id_user: number) {
     return this.http.delete(`${this.baseUrl}/databases/${id}`, {
       body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
-      headers: this.httpOptions.headers
+      headers: this.httpOptionsWithCredentials.headers
     });
   }
 
@@ -79,13 +91,13 @@ export class ApiService {
   }
 
   updateConnection(id: number, data: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/connections/${id}`, data, this.httpOptions); // ✅ Con headers
+    return this.http.put(`${this.baseUrl}/connections/${id}`, data, this.httpOptionsWithCredentials); // ✅ Con headers
   }
 
   deleteConnection(id: number, id_user: number) {
     return this.http.delete(`${this.baseUrl}/connections/${id}`, {
       body: { id_user }, // 👈 enviamos el id_user en el cuerpo del DELETE
-      headers: this.httpOptions.headers
+      headers: this.httpOptionsWithCredentials.headers
     });
   }
 
@@ -115,7 +127,7 @@ getDocument(dbId: string, collection: string, docId: string): Observable<any> {
     console.log('🚀 Datos:', data);
     return this.http.post(`${this.baseUrl}/send_data`, data);
   }
-  
+
   // --- LOGS ---
 
   getLogs(): Observable<any> {

@@ -1,0 +1,54 @@
+# Dependencias
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compilados
+dist
+.angular
+*.tsbuildinfo
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+*.spec.ts
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Documentación
+README.md
+*.md
+
+# Configuración local
+.env
+.env.local
+.env*.local
+
+# Logs
+logs
+*.log
+
+# Temporales
+tmp
+temp
+.tmp

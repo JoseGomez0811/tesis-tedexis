@@ -20,6 +20,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Special Admin Email
+    |--------------------------------------------------------------------------
+    | Email that will be automatically authorized and granted admin privileges
+    */
+    'admin_email' => env('ADMIN_EMAIL', 'gomez.jose@correo.unimet.edu.ve'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication Guards
     |--------------------------------------------------------------------------
     |

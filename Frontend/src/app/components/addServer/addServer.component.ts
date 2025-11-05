@@ -25,6 +25,9 @@ export class AddServerComponent {
   alertType: 'success' | 'error' | null = null;
   alertMessage = '';
 
+  isSaving = false;
+  isDeleting = false;
+
   constructor(
     private apiService: ApiService,
     private authService: AuthService
@@ -92,6 +95,7 @@ export class AddServerComponent {
   }
 
   async deleteServer(id: number) {
+    this.isDeleting = true;
     const currentUser = this.authService.getUser();
     let matchedUser: any = null;
 
@@ -126,10 +130,12 @@ export class AddServerComponent {
 
     this.apiService.deleteServer(id, id_user).subscribe({
       next: () => {
+        this.isDeleting = false;
         this.showAlert('success', 'Servidor eliminado con éxito ✅');
         this.loadServers();
       },
       error: (err) => {
+        this.isDeleting = false;
         console.error('❌ Error al eliminar servidor:', err);
         this.showAlert('error', 'Error al eliminar servidor');
       }
@@ -149,6 +155,8 @@ export class AddServerComponent {
       this.isSubmitting = false;
       return;
     }
+
+    this.isSaving = true; // 👈 Mostrar overlay
 
     const currentUser = this.authService.getUser();
         let matchedUser: any = null;
@@ -181,29 +189,38 @@ export class AddServerComponent {
     try {
       if (this.editingId) {
         // MODO EDICIÓN
+        //this.isSaving = true; // 👈 Mostrar overlay
+
         this.apiService.updateServer(this.editingId, payload).subscribe({
           next: () => {
+            this.isSaving = false; // 👈 Ocultar overlay
             this.showAlert('success', 'Servidor actualizado con éxito');
             this.resetForm();
             this.loadServers();
             this.isSubmitting = false;
           },
           error: (err) => {
+            this.isSaving = false; // 👈 Ocultar overlay
             console.error('❌ Error al actualizar servidor:', err);
             this.showAlert('error', 'Error al actualizar servidor');
             this.isSubmitting = false;
           }
         });
+
       } else {
         // MODO CREAR
+        //this.isSaving = true; // 👈 Mostrar overlay
+
         this.apiService.addServer(payload).subscribe({
           next: () => {
+            this.isSaving = false; // 👈 Ocultar overlay
             this.showAlert('success', 'Servidor registrado con éxito ✅');
             this.resetForm();
             this.loadServers();
             this.isSubmitting = false;
           },
           error: (err) => {
+            this.isSaving = false; // 👈 Ocultar overlay
             console.error('❌ Error al registrar servidor:', err);
             this.showAlert('error', 'Error al registrar servidor');
             this.isSubmitting = false;
@@ -211,6 +228,7 @@ export class AddServerComponent {
         });
       }
     } catch (err) {
+      this.isSaving = false;
       console.error('❌ onSubmit error:', err);
       this.showAlert('error', 'Ocurrió un error inesperado');
       this.isSubmitting = false;
