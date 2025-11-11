@@ -45,12 +45,18 @@
           <select
             [(ngModel)]="selectedServer"
             name="servidor"
+            required
+            #servidor="ngModel"
             (change)="onServerChange()"
             class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Seleccionar...</option>
             <option *ngFor="let s of servers" [value]="s.name">{{ s.name }}</option>
           </select>
+          <div *ngIf="servidor.invalid && servidor.touched" class="text-red-600 text-sm mt-1">
+            ⚠️ Debes seleccionar un servidor.
+          </div>
+
         </div>
       </div>
     </div>
@@ -66,12 +72,17 @@
           <select
             [(ngModel)]="selectedConnection"
             name="conexion"
+            required
+            #conexion="ngModel"
             (change)="onConnectionChange(); toggleFields($event)"
             class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Seleccionar...</option>
             <option *ngFor="let conn of filteredConnections" [value]="conn.name">{{ conn.name }}</option>
           </select>
+          <div *ngIf="conexion.invalid && conexion.touched" class="text-red-600 text-sm mt-1">
+            ⚠️ Debes seleccionar un tipo de conexión.
+          </div>
 
           <div *ngIf="showQueueField" class="mt-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">Nombre cola</label>
@@ -79,10 +90,16 @@
               type="text"
               [(ngModel)]="nombreCola"
               name="nombreCola"
+              required
+              #nombreCola="ngModel"
               placeholder="Nombre de la cola"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="nombreCola.invalid && nombreCola.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Debes ingresar el nombre de la cola.
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -97,6 +114,8 @@
         <select
           [(ngModel)]="tipoSimulacion"
           name="tipoSimulacion"
+          required
+          #tipoSimulacion="ngModel"
           (change)="toggleFields($event)"
           class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
         >
@@ -104,97 +123,174 @@
           <option value="nuevo">Nuevo</option>
           <option value="reuso">Reuso</option>
         </select>
+        <div *ngIf="tipoSimulacion.invalid && tipoSimulacion.touched" class="text-red-600 text-sm mt-1">
+          ⚠️ Selecciona el tipo de simulación.
+        </div>
       </div>
 
-      <!-- NUEVO -->
+      <!-- CAMPOS NUEVO -->
       <div *ngIf="showCamposNuevo" class="border-t border-gray-200 pt-6">
         <h3 class="text-lg font-medium text-gray-800 mb-4">Configuración Nueva Simulación</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- System ID -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">System ID</label>
             <input
               type="text"
               [(ngModel)]="systemId"
               name="systemIdNuevo"
-              id="systemIdNuevo"
+              required
+              minlength="3"
+              pattern="^[A-Za-z0-9_-]+$"
+              #systemIdNuevo="ngModel"
               placeholder="Ej: SMPP01"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="systemIdNuevo.invalid && systemIdNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un System ID válido (mínimo 3 caracteres).
+            </div>
           </div>
 
+          <!-- Contraseña -->
           <div *ngIf="showPasswordField">
             <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
             <input
               type="password"
               [(ngModel)]="password"
               name="passwordNuevo"
-              id="passwordNuevo"
+              required
+              minlength="4"
+              #passwordNuevo="ngModel"
               placeholder="••••••"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="passwordNuevo.invalid && passwordNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa una contraseña (mínimo 4 caracteres).
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Número de teléfono</label>
-            <input
-              type="text"
-              [(ngModel)]="numeroTelefono"
-              name="numeroTelefonoNuevo"
-              id="numeroTelefonoNuevo"
-              placeholder="Ej: +584121234567"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
-            <input
-              type="text"
-              [(ngModel)]="mensaje"
-              name="mensajeNuevo"
-              id="mensajeNuevo"
-              placeholder="Mensaje de prueba"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-            <input
-              type="number"
-              [(ngModel)]="cantidad"
-              name="cantidadNuevo"
-              id="cantidadNuevo"
-              placeholder="100"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
+          <!-- Short Code -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Short Code</label>
             <input
               type="text"
               [(ngModel)]="sc"
               name="scNuevo"
-              id="scNuevo"
+              required
+              pattern="^[0-9]{4,6}$"
+              #scNuevo="ngModel"
               placeholder="0800"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="scNuevo.invalid && scNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un Short Code válido (4–6 dígitos).
+            </div>
           </div>
 
+          <!-- Encoding -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Encoding</label>
-            <input
+            <!-- <input
               type="text"
               [(ngModel)]="encoding"
               name="encodingNuevo"
-              id="encodingNuevo"
+              required
+              pattern="^[A-Za-z0-9-]+$"
+              #encodingNuevo="ngModel"
               placeholder="UTF-8"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="encodingNuevo.invalid && encodingNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un formato de encoding válido (ej: UTF-8).
+            </div> -->
+            <select
+              [(ngModel)]="encoding"
+              name="encodingNuevo"
+              required
+              #encodingNuevo="ngModel"
+              (change)="onEncodingChange()"
+              class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="0">0</option>
+              <option value="3">3</option>
+              <option value="8">8</option>
+            </select>
+            <div *ngIf="encodingNuevo.invalid && encodingNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Seleccione un encoding.
+            </div>
+          </div>
+
+          <!-- Número de teléfono -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Número de teléfono</label>
+            <input
+              type="text"
+              [(ngModel)]="numeroTelefono"
+              name="numeroTelefonoNuevo"
+              required
+              pattern="^\+[0-9]{10,15}$"
+              #numeroTelefonoNuevo="ngModel"
+              placeholder="Ej: +584121234567"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <div *ngIf="numeroTelefonoNuevo.invalid && numeroTelefonoNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un número válido en formato internacional (+58412...).
+            </div>
+          </div>
+
+          <!-- Mensaje -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
+            <!-- <input
+              type="text"
+              [(ngModel)]="mensaje"
+              name="mensajeNuevo"
+              required
+              maxlength="160"
+              #mensajeNuevo="ngModel"
+              placeholder="Mensaje de prueba"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un mensaje (máx. 160 caracteres).
+            </div> -->
+            <input
+              type="text"
+              [(ngModel)]="mensaje"
+              name="mensajeNuevo"
+              required
+              [attr.maxlength]="mensajeMaxLength"
+              #mensajeNuevo="ngModel"
+              placeholder="Mensaje de prueba"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Ingresa un mensaje (máx. {{ mensajeMaxLength || '∞' }} caracteres).
+            </div>
+          </div>
+
+          <!-- Cantidad -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+            <input
+              type="number"
+              [(ngModel)]="cantidad"
+              name="cantidadNuevo"
+              required
+              min="1"
+              #cantidadNuevo="ngModel"
+              placeholder="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            />
+            <div *ngIf="cantidadNuevo.invalid && cantidadNuevo.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ La cantidad debe ser mayor a 0.
+            </div>
           </div>
         </div>
       </div>
+
 
       <!-- REUSO -->
       <div *ngIf="showCamposReuso" class="border-t border-gray-200 pt-6">
@@ -207,6 +303,8 @@
             <select
               [(ngModel)]="selectedDB"
               name="bdd"
+              required
+              #bdd="ngModel"
               id="bdd"
               (change)="onDatabaseChange()"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
@@ -214,6 +312,9 @@
               <option value="">Seleccionar...</option>
               <option *ngFor="let s of db" [value]="s.name">{{ s.name }}</option>
             </select>
+            <div *ngIf="bdd.invalid && bdd.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Debes seleccionar una base de datos.
+            </div>
           </div>
 
           <!-- COLECCIÓN -->
@@ -222,13 +323,18 @@
             <select
               [(ngModel)]="selectedCollection"
               name="collection"
+              required
+              #collection="ngModel"
               id="collection"
               (change)="onCollectionChange()"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Seleccionar...</option>
-              <option *ngFor="let c of collection" [value]="c">{{ c }}</option>
+              <option *ngFor="let c of collections" [value]="c">{{ c }}</option>
             </select>
+            <div *ngIf="collection.invalid && collection.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ Debes seleccionar una colección.
+            </div>
           </div>
         </div>
 
@@ -327,9 +433,15 @@
               name="cantidadReuso"
               [(ngModel)]="cantidadReuso"
               type="number"
+              required
+              min="1"
+              #cantidadReuso="ngModel"
               placeholder="100"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             />
+            <div *ngIf="cantidadReuso.invalid && cantidadReuso.touched" class="text-red-600 text-sm mt-1">
+              ⚠️ La cantidad debe ser mayor a 0.
+            </div>
           </div>
         </div>
         <div>

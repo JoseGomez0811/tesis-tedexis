@@ -169,17 +169,20 @@ export class AddConnectionComponent implements OnInit{
   // ==============================
   //        GUARDAR / EDITAR
   // ==============================
-  async onSubmit(event: Event) {
+  async onSubmit(event: Event, form: any) {
     event.preventDefault();
     if (this.isSubmitting) return;
-    this.isSubmitting = true;
 
-    if (!this.nombre || !this.conexion || !this.selectedServer || !this.puerto) {
-      this.showAlert('error', 'Por favor completa todos los campos obligatorios');
-      this.isSubmitting = false;
+    // 🧩 Validación angular antes de proceder
+    if (form.invalid) {
+      this.showAlert('error', 'Por favor corrige los errores antes de continuar');
+      Object.values(form.controls).forEach((control: any) => {
+        control.markAsTouched();
+      });
       return;
     }
 
+    this.isSubmitting = true;
     this.isSaving = true;
 
     // const id_server = this.servers.find(server => server.name === this.selectedServer)?.id_server ?? null;

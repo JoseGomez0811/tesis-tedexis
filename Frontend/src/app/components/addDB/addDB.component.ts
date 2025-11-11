@@ -164,6 +164,46 @@ export class AddDBComponent {
     if (this.isSubmitting) return;
     this.isSubmitting = true;
 
+    // Validaciones adicionales en frontend
+    if (!this.name || this.name.trim().length < 3) {
+      this.showAlert('error', 'El nombre debe tener al menos 3 caracteres');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.host.match(/^[a-zA-Z0-9.-]+$/)) {
+      this.showAlert('error', 'El host contiene caracteres inválidos');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (this.port < 1 || this.port > 65535) {
+      this.showAlert('error', 'El puerto debe estar entre 1 y 65535');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.user || this.user.trim().length < 3) {
+      this.showAlert('error', 'El usuario es obligatorio y debe tener al menos 3 caracteres');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.editingId && (!this.password || this.password.trim().length < 6)) {
+      this.showAlert('error', 'La contraseña es obligatoria (mínimo 6 caracteres)');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.auth_db || !this.name_db) {
+      this.showAlert('error', 'Los campos Auth DB y Nombre BD son obligatorios');
+      this.isSubmitting = false;
+      return;
+    }
+    
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+
     if (!this.name || !this.host || !this.port || !this.user || !this.name_db) {
       this.showAlert('error', 'Por favor completa todos los campos obligatorios');
       this.isSubmitting = false;

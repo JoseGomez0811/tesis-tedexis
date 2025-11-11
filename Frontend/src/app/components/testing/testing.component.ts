@@ -17,13 +17,14 @@ import { lastValueFrom } from 'rxjs';
 export class TestingComponent implements OnInit {
   servers: any[] = [];
   db: any[] = [];
-  collection: any[] = [];
+  collections: any[] = [];
   documents: any[] = [];
   connections: any[] = [];
   filteredConnections: any[] = [];
   selectedDocument: any = null;
   phoneNumbers: any[] = [];
   collectionNames: string[] = [];
+  mensajeMaxLength: number | null = null;
 
   users: any = null;
 
@@ -246,18 +247,18 @@ export class TestingComponent implements OnInit {
   onDatabaseChange() {
     const db = this.db.find(d => d.name === this.selectedDB);
     if (!db || !db.id) {
-      this.collection = [];
+      this.collections = [];
       return;
     }
 
     this.apiService.getCollections(db.id).subscribe({
       next: (res: any) => {
-        this.collection = Array.isArray(res) ? res : (res.collections ?? []);
+        this.collections = Array.isArray(res) ? res : (res.collections ?? []);
         //this.collection = Array.isArray(res) ? res : res.data ?? [];
       },
       error: err => {
         console.error('Error cargando colecciones:', err);
-        this.collection = [];
+        this.collections = [];
       }
     });
   }
@@ -437,8 +438,155 @@ export class TestingComponent implements OnInit {
         });
     }
 
+  onEncodingChange() {
+    const encodingValue = Number(this.encoding);
+
+    if (encodingValue === 0) {
+      this.mensajeMaxLength = null; // sin límite
+    } else if (encodingValue === 3) {
+      this.mensajeMaxLength = 160;
+    } else if (encodingValue === 8) {
+      this.mensajeMaxLength = 170;
+    } else {
+      this.mensajeMaxLength = null;
+    }
+  }
+
   async onSubmit(event: Event) {
     event.preventDefault();
+
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+
+    // --- Validaciones base ---
+    if (!this.selectedServer) {
+      this.showAlert('error', 'Debes seleccionar un servidor.');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.selectedConnection) {
+      this.showAlert('error', 'Debes seleccionar un tipo de conexión.');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (this.showQueueField && (!this.nombreCola || this.nombreCola.trim().length === 0)) {
+      this.showAlert('error', 'Debes ingresar el nombre de la cola.');
+      this.isSubmitting = false;
+      return;
+    }
+
+    if (!this.tipoSimulacion) {
+      this.showAlert('error', 'Debes seleccionar el tipo de simulación.');
+      this.isSubmitting = false;
+      return;
+    }
+
+    // --- Validaciones según tipo ---
+    if (this.tipoSimulacion === 'nuevo') {
+      // System ID
+      if (!this.systemId || this.systemId.trim().length < 3 || !/^[A-Za-z0-9_-]+$/.test(this.systemId)) {
+        this.showAlert('error', 'Ingresa un System ID válido (mínimo 3 caracteres, sin espacios).');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Contraseña
+      if (!this.password || this.password.trim().length < 4) {
+        this.showAlert('error', 'La contraseña debe tener al menos 4 caracteres.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Número de teléfono
+      const phoneRegex = /^\+[0-9]{10,15}$/;
+      if (!this.numeroTelefono || !phoneRegex.test(this.numeroTelefono)) {
+        this.showAlert('error', 'Ingresa un número válido en formato internacional (+58412...).');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Mensaje
+      // if (!this.mensaje || this.mensaje.trim().length === 0 || this.mensaje.length > 160) {
+      //   this.showAlert('error', 'El mensaje es obligatorio y no puede superar los 160 caracteres.');
+      //   this.isSubmitting = false;
+      //   return;
+      // }
+
+      if (!this.mensaje || this.mensaje.trim().length === 0) {
+        this.showAlert('error', 'El mensaje es obligatorio.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      const encodingValue = Number(this.encoding);
+
+      if (encodingValue === 3 && this.mensaje.length > 160) {
+        this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      if (encodingValue === 8 && this.mensaje.length > 170) {
+        this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Cantidad
+      if (!this.cantidad || this.cantidad <= 0) {
+        this.showAlert('error', 'La cantidad debe ser mayor a 0.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Short Code
+      if (!this.sc || !/^[0-9]{4,6}$/.test(this.sc)) {
+        this.showAlert('error', 'Ingresa un Short Code válido (4–6 dígitos).');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Encoding
+      // if (!this.encoding || !/^[A-Za-z0-9-]+$/.test(this.encoding)) {
+      //   this.showAlert('error', 'Ingresa un formato de encoding válido (ej: UTF-8).');
+      //   this.isSubmitting = false;
+      //   return;
+      // }
+
+      if (!this.encoding) {
+        this.showAlert('error', 'Debes seleccionar un encoding.');
+        this.isSubmitting = false;
+        return;
+      }
+    }
+
+    if (this.tipoSimulacion === 'reuso') {
+      // Base de datos
+      if (!this.selectedDB) {
+        this.showAlert('error', 'Debes seleccionar una base de datos.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Colección
+      if (!this.selectedCollection) {
+        this.showAlert('error', 'Debes seleccionar una colección.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // Cantidad
+      if (!this.cantidadReuso || this.cantidadReuso <= 0) {
+        this.showAlert('error', 'La cantidad de reuso debe ser mayor a 0.');
+        this.isSubmitting = false;
+        return;
+      }
+    }
+
+    // ✅ Si pasa todas las validaciones
+    this.showAlert('success', 'Validaciones completadas correctamente. Enviando simulación...');
 
     if (this.isSubmitting) {
       this.showAlert('error', 'Ya hay una simulación en proceso. Por favor espera.');

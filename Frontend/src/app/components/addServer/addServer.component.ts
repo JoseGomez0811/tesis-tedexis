@@ -150,13 +150,21 @@ export class AddServerComponent {
     if (this.isSubmitting) return;
     this.isSubmitting = true;
 
-    if (!this.nombre || !this.ip) {
-      this.showAlert('error', 'Por favor completa todos los campos obligatorios');
+    // Validaciones front-end
+    if (!this.nombre || this.nombre.trim().length < 3) {
+      this.showAlert('error', 'El nombre debe tener al menos 3 caracteres.');
       this.isSubmitting = false;
       return;
     }
 
-    this.isSaving = true; // 👈 Mostrar overlay
+    const ipRegex = /^([a-zA-Z0-9.-]+|(([0-9]{1,3}\.){3}[0-9]{1,3}))$/;
+    if (!this.ip || !ipRegex.test(this.ip)) {
+      this.showAlert('error', 'La IP o host no es válida.');
+      this.isSubmitting = false;
+      return;
+    }
+
+    this.isSaving = true;
 
     const currentUser = this.authService.getUser();
         let matchedUser: any = null;
