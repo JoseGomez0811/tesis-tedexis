@@ -54,6 +54,8 @@ return new class extends Migration
                   ->on('database_connections')
                   ->onUpdate('cascade')
                   ->onDelete('cascade');
+
+            $table->string('collection')->nullable();
            
             // $table->unsignedBigInteger('id_collection')->nullable();
 

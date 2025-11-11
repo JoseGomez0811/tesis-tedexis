@@ -1,1 +1,21 @@
 
+/* Overlay del dialog - asegura que cubra toda la pantalla */
+.dialog-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 9999 !important;
+  overflow: hidden;
+}
+
+/* Asegurar que el body no tenga scroll cuando el dialog está abierto */
+body.dialog-open {
+  overflow: hidden;
+  height: 100vh;
+}

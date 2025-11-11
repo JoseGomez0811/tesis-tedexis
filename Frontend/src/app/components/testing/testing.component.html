@@ -232,10 +232,20 @@
           </div>
         </div>
 
+        <!-- ETIQUETA CANTIDAD DE REGISTROS EN LA COLECCIÓN -->
+        <!-- <div *ngIf="documentsCount !== null" class="mt-4 text-sm text-gray-600">
+          Total de documentos en la colección seleccionada: <span class="font-medium">{{ documentsCount }}</span> -->
+
+        <div *ngIf="documentsCount !== null" class="mt-4 text-sm text-gray-600">
+          <label class="block text-sm font-medium text-gray-700 mb-2 mu-2">
+            Total de documentos en la colección seleccionada: <span class="font-medium">{{ documentsCount }}</span>
+          </label>
+        </div>
+
         
 
         <!-- TABLA -->
-        <div *ngIf="selectedCollection" class="mt-6">
+        <!-- <div *ngIf="selectedCollection" class="mt-6">
           <div *ngIf="documents.length > 0" class="border rounded-lg overflow-hidden">
             <div class="overflow-x-auto overflow-y-auto max-h-72">
               <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -282,7 +292,7 @@
           <div *ngIf="documents.length === 0" class="mt-4 p-4 text-center text-gray-500 bg-gray-100 rounded-md">
             No se encontraron documentos para la colección seleccionada.
           </div>
-        </div>
+        </div> -->
 
         <!-- CAMPOS ADICIONALES PARA REUSO -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -322,7 +332,13 @@
             />
           </div>
         </div>
-
+        <div>
+          <label for="nota" class="block text-sm font-medium text-blue-500 mb-2">
+            Nota: Los registros ya incluyen un System ID por defecto, 
+            en caso de que desee cambiarlo, ingrese uno nuevo. 
+            De lo contrario, deje el campo vacío.
+          </label>
+          </div>
       </div>
     </div>
 
@@ -341,11 +357,15 @@
      --------------------------- -->
     <div
       *ngIf="showSendingDialog"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+      class="dialog-overlay flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
+      (click)="$event.target === $event.currentTarget && !isSubmitting && closeSendingDialog()"
     >
-      <div class="bg-white w-11/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 max-h-[70vh] flex flex-col">
+      <div 
+        class="bg-white w-10/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 max-h-[70vh] flex flex-col relative"
+        (click)="$event.stopPropagation()"
+      >
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
             <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -353,10 +373,6 @@
                     d="M3 10h4l3 8 4-16 3 8h4" />
             </svg>
             <h3 class="text-lg font-semibold text-gray-800">📡 Envío de simulaciones</h3>
-          </div>
-          <!-- contador / estado -->
-          <div class="text-sm text-gray-500">
-            {{ sendingLogs.length > 0 ? sendingLogsCountText : '' }}
           </div>
         </div>
 
@@ -369,7 +385,8 @@
             <p [ngClass]="{
                   'text-blue-600': log.startsWith('🚀'),
                   'text-green-600': log.startsWith('✅'),
-                  'text-red-600': log.startsWith('❌')
+                  'text-red-600': log.startsWith('❌'),
+                  'text-orange-600': log.startsWith('🔔')
                 }">
               {{ log }}
             </p>
@@ -380,19 +397,17 @@
           <button
             *ngIf="!isSubmitting"
             (click)="closeSendingDialog()"
-            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
           >
             Cerrar
           </button>
           <!-- muestra si sigue en proceso -->
           <div *ngIf="isSubmitting" class="flex items-center gap-2 text-sm text-gray-600">
             <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            Enviando...
+            <span>Enviando...</span>
           </div>
         </div>
       </div>
     </div>
-
-
   </form>
 </div>

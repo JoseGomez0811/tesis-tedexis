@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendSimulationRequest;
+use App\Http\Requests\StoreSimulationRequest;
 use App\Models\Logs;
 use App\Models\StoreSimulation;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class SendSimulationController extends Controller
                 'short_code',
                 'encoding',
                 'id_db',
+                'collection',
                 'created_at',
             ])
         );
@@ -52,7 +54,22 @@ class SendSimulationController extends Controller
 
             // ✅ Validar todas las simulaciones antes del envío
             foreach ($datos['simulations'] as $sim) {
-                $validator = Validator::make($sim, (new SendSimulationRequest())->rules());
+
+                $simData = [
+                    'hostServer' => $sim['hostServer'] ?? null,
+                    'portConnection' => $sim['portConnection'] ?? null,
+                    'typeConnection' => $sim['typeConnection'] ?? null,
+                    'nameQueue' => $sim['nameQueue'] ?? null,
+                    'systemID' => $sim['systemID'] ?? null,
+                    'password' => $sim['password'] ?? null,
+                    'phoneNumber' => $sim['phoneNumber'] ?? null,
+                    'message' => $sim['message'] ?? null,
+                    'number' => $sim['number'] ?? null,
+                    'shortCode' => $sim['shortCode'] ?? null,
+                    'encoding' => $sim['encoding'] ?? null,
+                    'created_at' => now(),
+                ];
+                $validator = Validator::make($simData, (new SendSimulationRequest())->rules());
 
                 if ($validator->fails()) {
                     $results[] = [
@@ -78,6 +95,7 @@ class SendSimulationController extends Controller
                     'simulations' => $datos['simulations'],
                     'total' => count($datos['simulations']),
                     'timestamp' => Carbon::now()->toISOString(),
+                    'type' => $datos['type'] ?? 'desconocido',
                 ];
 
                 $url = "http://host.docker.internal:9000/receive-data";
@@ -94,6 +112,22 @@ class SendSimulationController extends Controller
                         'body' => $response->body(),
                     ], $response->status());
                 }
+                
+                // $storeData = [
+                //     'id_connection' => $datos['simulations']['id_connection'] ?? null,
+                //     'nameQueue' => $datos['simulations']['nameQueue'] ?? null,
+                //     'system_id' => $datos['simulations']['systemID'] ?? null,
+                //     'password' => $datos['simulations']['password'] ?? null,
+                //     'phone_number' => $datos['simulations']['phoneNumber'] ?? null,
+                //     'message' => $datos['simulations']['message'] ?? null,
+                //     'number' => $datos['simulations']['number'] ?? null,
+                //     'short_code' => $datos['simulations']['shortCode'] ?? null,
+                //     'encoding' => $datos['simulations']['encoding'] ?? null,
+                //     'id_db' => $datos['simulations']['id_db'] ?? null,
+                //     'created_at' => now(),
+                // ];
+
+                // StoreSimulationRequest::store($storeData);
 
                 return response()->json([
                     'message' => '✅ Simulaciones enviadas correctamente al Web Service Java.',
@@ -112,6 +146,39 @@ class SendSimulationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error interno al procesar la simulación.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function store(StoreSimulationRequest $request)
+    {
+        try {
+            $data = $request->validated();
+
+            // Agregamos la fecha de creación explícitamente (por claridad)
+            $data['created_at'] = now();
+
+            // Crear la simulación
+            $simulation = StoreSimulation::create($data);
+
+            return response()->json([
+                'message' => 'Simulación creada exitosamente.',
+                'success' => true,
+                'data' => $simulation,
+                'id_simulation' => $simulation->id_simulation
+            ], 201);
+
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor',
                 'error' => $e->getMessage(),
             ], 500);
         }

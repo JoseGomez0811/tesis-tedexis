@@ -23,6 +23,7 @@ export class TestingComponent implements OnInit {
   filteredConnections: any[] = [];
   selectedDocument: any = null;
   phoneNumbers: any[] = [];
+  collectionNames: string[] = [];
 
   users: any = null;
 
@@ -41,6 +42,7 @@ export class TestingComponent implements OnInit {
   nombreCola = '';
   dbPassword = '';
   dbSystemID = '';
+  documentsCount = 0;
 
   // Campos nuevo
   numeroTelefono = '';
@@ -130,6 +132,28 @@ export class TestingComponent implements OnInit {
   closeSendingDialog() {
     this.showSendingDialog = false;
     this.sendingLogs = [];
+  }
+
+  // Método mejorado para cerrar el dialog y mostrar alerta
+  async closeDialogAndShowAlert(type: 'success' | 'error', message: string) {
+    return new Promise<void>((resolve) => {
+      // Esperar 2 segundos para que el usuario vea el último mensaje
+      setTimeout(() => {
+        // Cerrar el dialog
+        this.showSendingDialog = false;
+        
+        // Esperar a que la animación de cierre termine (400ms)
+        setTimeout(() => {
+          // Limpiar logs
+          this.sendingLogs = [];
+          
+          // Mostrar la alerta
+          this.showAlert(type, message);
+          
+          resolve();
+        }, 400);
+      }, 2000); // 2 segundos de espera para ver el mensaje final
+    });
   }
 
   // Getter para mostrar contador simple (puedes personalizar)
@@ -239,7 +263,10 @@ export class TestingComponent implements OnInit {
   }
 
   onCollectionChange() {
+
     const collectionName = this.selectedCollection;
+
+
     const dbObj = this.db.find(d => d.name === this.selectedDB);
 
     if (!dbObj || !dbObj.id || !collectionName) {
@@ -252,6 +279,8 @@ export class TestingComponent implements OnInit {
         //this.documents = Array.isArray(res) ? res : res.data ?? [];
         this.documents = Array.isArray(res) ? res : (res.data ?? []);
         this.selectedDocument = null;
+        this.documentsCount = this.documents.length
+
       },
       error: err => {
         console.error('Error cargando documentos:', err);
@@ -384,6 +413,29 @@ export class TestingComponent implements OnInit {
     return shuffled.slice(0, Math.min(count, array.length));
   }
 
+  private logSimulationAction(action: string, id: string): void {
+        const currentUser = this.authService.getUser();
+        if (!currentUser) {
+            console.warn('⚠️ No hay usuario autenticado para registrar log');
+            return;
+        }
+
+        // Usar el usuario actual directamente sin necesidad de buscar en la API
+        const logData = {
+            id_user: currentUser.id,
+            id_server: null,
+            id_connection: null,
+            id_db: null,
+            id_simulation: id || null,
+            description: action.replace('{user}', currentUser.name || 'Desconocido'),
+        };
+
+        // Enviar log de forma asíncrona sin bloquear la UI
+        this.apiService.storeLogs(logData).subscribe({
+            next: () => console.log('✅ Log guardado correctamente'),
+            error: (err) => console.error('❌ Error al guardar log:', err),
+        });
+    }
 
   async onSubmit(event: Event) {
     event.preventDefault();
@@ -443,8 +495,14 @@ export class TestingComponent implements OnInit {
       portConnection: connectionPort,
       typeConnection: connectionType,
       nameQueue: this.nombreCola,
-      id_connection: connectionID,
+      // id_connection: connectionID,
       // id_db: dbId,
+    };
+
+    const storeDataBase: any = {
+      id_connection: connectionID,
+      nameQueue: this.nombreCola || null,
+      id_db: dbId || null,
     };
 
     try {
@@ -455,6 +513,17 @@ export class TestingComponent implements OnInit {
           this.isSubmitting = false;
           return;
         }
+
+        const storeData: any = {
+          ...storeDataBase,
+          system_id: this.systemId,
+          password: this.password,
+          phone_number: String(this.phoneNumbers),
+          message: this.mensaje,
+          number: this.cantidad,
+          short_code: Number(this.sc),
+          encoding: this.encoding,
+        };
 
         const allSimulations: any[] = [];
 
@@ -483,17 +552,21 @@ export class TestingComponent implements OnInit {
           simulations: allSimulations,
           total: allSimulations.length,
           timestamp: new Date().toISOString(),
+          type: 'nuevo',
         };
 
-        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones en un solo POST...`);
+        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
           const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
           this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
-          this.showAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones en un único POST.`);
+          const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+          this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, store.id_simulation);
+          await this.closeDialogAndShowAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones.`);
         } catch (error) {
-          console.error('❌ Error enviando simulaciones agrupadas:', error);
-          this.showAlert('error', 'Error enviando simulaciones agrupadas.');
+          console.error('❌ Error enviando simulaciones:', error);
+          this.addLog(`❌ Error: ${error}`);
+          await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
         }
 
         this.resetForm();
@@ -540,6 +613,26 @@ export class TestingComponent implements OnInit {
           return;
         }
 
+        this.collectionNames.length = 0;
+        if (collectionName) {
+          this.collectionNames.push(collectionName);
+        }
+        console.log('📁 Colección actual:', this.collectionNames[0]);
+
+        const storeData: any = {
+          ...storeDataBase,
+          system_id: this.systemId,
+          password: this.password,
+          phone_number: 'N/A',
+          message: 'N/A',
+          number: this.cantidadReuso,
+          short_code:  0,
+          encoding: 0,
+          collection: collectionName,
+        };
+
+        // console.log(String(this.selectedCollection));
+
         // 🔸 Seleccionar registros aleatorios sin repetición
         const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
 
@@ -547,7 +640,7 @@ export class TestingComponent implements OnInit {
         const allSimulations: any[] = selectedDocs.map((doc, i) => ({
           ...simulationDataBase,
           requestId: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-          systemID: doc.SystemID || doc.systemId || '',
+          systemID: this.systemId || doc.SystemID || doc.systemId || '',
           password: this.password || doc.password || '',
           phoneNumber: doc.PhoneNumber || doc.submitSm?.destAddress || '',
           message: doc.Text || doc.submitSm?.shortMessageString || '',
@@ -566,24 +659,25 @@ export class TestingComponent implements OnInit {
           simulations: allSimulations,
           total: allSimulations.length,
           timestamp: new Date().toISOString(),
+          type: 'reuso',
         };
 
-        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones en un solo POST...`);
+        this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
           const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
           this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
-          this.showAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones en un único POST.`);
+          const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+          this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.` , store.id_simulation);
+          await this.closeDialogAndShowAlert('success',`✅ Se enviaron ${allSimulations.length} simulaciones.`);
         } catch (error) {
-          console.error('❌ Error enviando simulaciones agrupadas:', error);
-          this.showAlert('error', 'Error enviando simulaciones agrupadas.');
+          console.error('❌ Error enviando simulaciones:', error);
+          this.addLog(`❌ Error: ${error}`);
+          await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
         }
 
         this.resetForm();
       }
-
-
-
     } catch (error) {
       console.error('❌ Error general en el proceso:', error);
       this.showAlert('error', 'Error en el proceso de simulación');

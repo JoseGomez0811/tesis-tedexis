@@ -20,5 +20,6 @@ class StoreSimulation extends Model
         'short_code',
         'encoding',
         'id_db',
+        'collection',
     ];
 }
