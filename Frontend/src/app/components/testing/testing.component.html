@@ -1,484 +1,418 @@
-<div class="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-sm">
-  <!-- ✅ Alerta tipo TOAST -->
-    <div
-        *ngIf="alertVisible"
-        [ngClass]="{
-        'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
-        'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
-        }"
-        class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
-        [class.opacity-100]="alertVisible"
-        [class.opacity-0]="!alertVisible"
-        role="alert"
-    >
-        <div class="flex justify-between items-start">
-        <div>
-            <p class="font-bold">
-            {{ alertType === 'success' ? 'Éxito' : 'Error' }}
-            </p>
-            <p>{{ alertMessage }}</p>
-        </div>
+<div class="min-h-screen w-full bg-[#F2F3F7]">
 
-        <!-- Botón para cerrar manualmente -->
-        <button
-            (click)="closeAlert()"
-            class="text-gray-500 hover:text-gray-700 ml-4"
-        >
-            ✖
-        </button>
-        </div>
-    </div>
-  <!-- Header -->
-  <div class="mb-8">
-    <h1 class="text-3xl font-semibold text-gray-900 mb-2">Simulación</h1>
-    <p class="text-gray-600">Configura los parámetros de tu simulación</p>
-  </div>
-
-  <form class="space-y-8" (ngSubmit)="onSubmit($event)">
-    <!-- SERVIDOR -->
-    <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-      <h2 class="text-xl font-medium text-gray-900 mb-2">Servidor</h2>
-      <p class="text-gray-600 mb-6">Seleccione el servidor hacia donde se enviarán los parámetros.</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del servidor</label>
-          <select
-            [(ngModel)]="selectedServer"
-            name="servidor"
-            required
-            #servidor="ngModel"
-            (change)="onServerChange()"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Seleccionar...</option>
-            <option *ngFor="let s of servers" [value]="s.name">{{ s.name }}</option>
-          </select>
-          <div *ngIf="servidor.invalid && servidor.touched" class="text-red-600 text-sm mt-1">
-            ⚠️ Debes seleccionar un servidor.
-          </div>
-
-        </div>
+  <!-- ✅ ALERTA TOAST -->
+  <div
+    *ngIf="alertVisible"
+    [ngClass]="{
+      'bg-green-100 border-l-4 border-green-500 text-green-700': alertType === 'success',
+      'bg-orange-100 border-l-4 border-orange-500 text-orange-700': alertType === 'error'
+    }"
+    class="fixed top-4 left-1/2 transform -translate-x-1/2 w-11/12 md:w-1/2 p-4 rounded-md shadow-lg transition-all duration-500 ease-in-out z-50"
+    [class.opacity-100]="alertVisible"
+    [class.opacity-0]="!alertVisible"
+    role="alert"
+  >
+    <div class="flex justify-between items-start">
+      <div>
+        <p class="font-bold">
+          {{ alertType === 'success' ? 'Éxito' : 'Error' }}
+        </p>
+        <p>{{ alertMessage }}</p>
       </div>
-    </div>
-
-    <!-- CONEXIÓN -->
-    <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-      <h2 class="text-xl font-medium text-gray-900 mb-2">Tipo de Conexión</h2>
-      <p class="text-gray-600 mb-6">Seleccione el tipo de conexión que desea implementar.</p>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de conexión</label>
-          <select
-            [(ngModel)]="selectedConnection"
-            name="conexion"
-            required
-            #conexion="ngModel"
-            (change)="onConnectionChange(); toggleFields($event)"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Seleccionar...</option>
-            <option *ngFor="let conn of filteredConnections" [value]="conn.name">{{ conn.name }}</option>
-          </select>
-          <div *ngIf="conexion.invalid && conexion.touched" class="text-red-600 text-sm mt-1">
-            ⚠️ Debes seleccionar un tipo de conexión.
-          </div>
-
-          <div *ngIf="showQueueField" class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre cola</label>
-            <input
-              type="text"
-              [(ngModel)]="nombreCola"
-              name="nombreCola"
-              required
-              #nombreCola="ngModel"
-              placeholder="Nombre de la cola"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="nombreCola.invalid && nombreCola.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Debes ingresar el nombre de la cola.
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- TIPO DE SIMULACIÓN -->
-    <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-      <h2 class="text-xl font-medium text-gray-900 mb-2">Tipo de Simulación</h2>
-      <p class="text-gray-600 mb-6">Selecciona si deseas crear una nueva simulación o reutilizar una existente.</p>
-
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-        <select
-          [(ngModel)]="tipoSimulacion"
-          name="tipoSimulacion"
-          required
-          #tipoSimulacion="ngModel"
-          (change)="toggleFields($event)"
-          class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Seleccionar...</option>
-          <option value="nuevo">Nuevo</option>
-          <option value="reuso">Reuso</option>
-        </select>
-        <div *ngIf="tipoSimulacion.invalid && tipoSimulacion.touched" class="text-red-600 text-sm mt-1">
-          ⚠️ Selecciona el tipo de simulación.
-        </div>
-      </div>
-
-      <!-- CAMPOS NUEVO -->
-      <div *ngIf="showCamposNuevo" class="border-t border-gray-200 pt-6">
-        <h3 class="text-lg font-medium text-gray-800 mb-4">Configuración Nueva Simulación</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          <!-- System ID -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">System ID</label>
-            <input
-              type="text"
-              [(ngModel)]="systemId"
-              name="systemIdNuevo"
-              required
-              minlength="3"
-              pattern="^[A-Za-z0-9_-]+$"
-              #systemIdNuevo="ngModel"
-              placeholder="Ej: SMPP01"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="systemIdNuevo.invalid && systemIdNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un System ID válido (mínimo 3 caracteres).
-            </div>
-          </div>
-
-          <!-- Contraseña -->
-          <div *ngIf="showPasswordField">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-            <input
-              type="password"
-              [(ngModel)]="password"
-              name="passwordNuevo"
-              required
-              minlength="4"
-              #passwordNuevo="ngModel"
-              placeholder="••••••"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="passwordNuevo.invalid && passwordNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa una contraseña (mínimo 4 caracteres).
-            </div>
-          </div>
-
-          <!-- Short Code -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Short Code</label>
-            <input
-              type="text"
-              [(ngModel)]="sc"
-              name="scNuevo"
-              required
-              pattern="^[0-9]{4,6}$"
-              #scNuevo="ngModel"
-              placeholder="0800"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="scNuevo.invalid && scNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un Short Code válido (4–6 dígitos).
-            </div>
-          </div>
-
-          <!-- Encoding -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Encoding</label>
-            <!-- <input
-              type="text"
-              [(ngModel)]="encoding"
-              name="encodingNuevo"
-              required
-              pattern="^[A-Za-z0-9-]+$"
-              #encodingNuevo="ngModel"
-              placeholder="UTF-8"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="encodingNuevo.invalid && encodingNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un formato de encoding válido (ej: UTF-8).
-            </div> -->
-            <select
-              [(ngModel)]="encoding"
-              name="encodingNuevo"
-              required
-              #encodingNuevo="ngModel"
-              (change)="onEncodingChange()"
-              class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Seleccionar...</option>
-              <option value="0">0</option>
-              <option value="3">3</option>
-              <option value="8">8</option>
-            </select>
-            <div *ngIf="encodingNuevo.invalid && encodingNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Seleccione un encoding.
-            </div>
-          </div>
-
-          <!-- Número de teléfono -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Número de teléfono</label>
-            <input
-              type="text"
-              [(ngModel)]="numeroTelefono"
-              name="numeroTelefonoNuevo"
-              required
-              pattern="^\+[0-9]{10,15}$"
-              #numeroTelefonoNuevo="ngModel"
-              placeholder="Ej: +584121234567"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="numeroTelefonoNuevo.invalid && numeroTelefonoNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un número válido en formato internacional (+58412...).
-            </div>
-          </div>
-
-          <!-- Mensaje -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
-            <!-- <input
-              type="text"
-              [(ngModel)]="mensaje"
-              name="mensajeNuevo"
-              required
-              maxlength="160"
-              #mensajeNuevo="ngModel"
-              placeholder="Mensaje de prueba"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un mensaje (máx. 160 caracteres).
-            </div> -->
-            <input
-              type="text"
-              [(ngModel)]="mensaje"
-              name="mensajeNuevo"
-              required
-              [attr.maxlength]="mensajeMaxLength"
-              #mensajeNuevo="ngModel"
-              placeholder="Mensaje de prueba"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Ingresa un mensaje (máx. {{ mensajeMaxLength || '∞' }} caracteres).
-            </div>
-          </div>
-
-          <!-- Cantidad -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-            <input
-              type="number"
-              [(ngModel)]="cantidad"
-              name="cantidadNuevo"
-              required
-              min="1"
-              #cantidadNuevo="ngModel"
-              placeholder="100"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="cantidadNuevo.invalid && cantidadNuevo.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ La cantidad debe ser mayor a 0.
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- REUSO -->
-      <div *ngIf="showCamposReuso" class="border-t border-gray-200 pt-6">
-        <h3 class="text-lg font-medium text-gray-800 mb-4">Reutilizar Mensajes Existentes</h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- BD -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Base de Datos</label>
-            <select
-              [(ngModel)]="selectedDB"
-              name="bdd"
-              required
-              #bdd="ngModel"
-              id="bdd"
-              (change)="onDatabaseChange()"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Seleccionar...</option>
-              <option *ngFor="let s of db" [value]="s.name">{{ s.name }}</option>
-            </select>
-            <div *ngIf="bdd.invalid && bdd.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Debes seleccionar una base de datos.
-            </div>
-          </div>
-
-          <!-- COLECCIÓN -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Colección</label>
-            <select
-              [(ngModel)]="selectedCollection"
-              name="collection"
-              required
-              #collection="ngModel"
-              id="collection"
-              (change)="onCollectionChange()"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Seleccionar...</option>
-              <option *ngFor="let c of collections" [value]="c">{{ c }}</option>
-            </select>
-            <div *ngIf="collection.invalid && collection.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ Debes seleccionar una colección.
-            </div>
-          </div>
-        </div>
-
-        <!-- ETIQUETA CANTIDAD DE REGISTROS EN LA COLECCIÓN -->
-        <!-- <div *ngIf="documentsCount !== null" class="mt-4 text-sm text-gray-600">
-          Total de documentos en la colección seleccionada: <span class="font-medium">{{ documentsCount }}</span> -->
-
-        <div *ngIf="documentsCount !== null" class="mt-4 text-sm text-gray-600">
-          <label class="block text-sm font-medium text-gray-700 mb-2 mu-2">
-            Total de documentos en la colección seleccionada: <span class="font-medium">{{ documentsCount }}</span>
-          </label>
-        </div>
-
-        
-
-        <!-- TABLA -->
-        <!-- <div *ngIf="selectedCollection" class="mt-6">
-          <div *ngIf="documents.length > 0" class="border rounded-lg overflow-hidden">
-            <div class="overflow-x-auto overflow-y-auto max-h-72">
-              <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-100 sticky top-0">
-                  <tr>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">Seleccionar</th>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">System ID</th>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">Teléfono</th>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">Short Code</th>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">Encoding</th>
-                    <th class="px-6 py-3 text-left font-medium text-gray-600 uppercase">Mensaje</th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr
-                    *ngFor="let doc of documents"
-                    (click)="selectDocument(doc)"
-                    [ngClass]="{
-                      'bg-blue-50': docIsSelected(doc),
-                      'hover:bg-gray-50': !docIsSelected(doc)
-                    }"
-                    class="cursor-pointer"
-                  >
-                    <td class="px-6 py-3">
-                      <input
-                        type="radio"
-                        name="documentoSeleccionado"
-                        [checked]="docIsSelected(doc)"
-                        class="form-radio h-4 w-4 text-blue-600"
-                        (click)="$event.stopPropagation(); selectDocument(doc)"
-                      >
-                    </td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.SystemID || doc.systemId || doc.system_id || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.PhoneNumber || doc.submitSm.destAddress || doc.phone_number || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.shortCode || doc.ShortCode || doc.sc || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800">{{ doc.Encoding || doc.submitSm.dataCoding || '—' }}</td>
-                    <td class="px-6 py-3 text-gray-800 truncate max-w-xs">{{ doc.Text || doc.submitSm.shortMessageString || '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div *ngIf="documents.length === 0" class="mt-4 p-4 text-center text-gray-500 bg-gray-100 rounded-md">
-            No se encontraron documentos para la colección seleccionada.
-          </div>
-        </div> -->
-
-        <!-- CAMPOS ADICIONALES PARA REUSO -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-          <div *ngIf="showSystemIDField">
-            <label for="systemIdReuso" class="block text-sm font-medium text-gray-700 mb-2">System ID</label>
-            <input
-              id="systemIdReuso"
-              name="systemIdReuso"
-              [(ngModel)]="systemId"
-              type="text"
-              placeholder="100"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div *ngIf="showPasswordFieldReuso">
-            <label for="passwordReuso" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-            <input
-              id="passwordReuso"
-              name="passwordReuso"
-              [(ngModel)]="password"
-              type="password"
-              placeholder="••••••"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label for="cantidadReuso" class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
-            <input
-              id="cantidadReuso"
-              name="cantidadReuso"
-              [(ngModel)]="cantidadReuso"
-              type="number"
-              required
-              min="1"
-              #cantidadReuso="ngModel"
-              placeholder="100"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <div *ngIf="cantidadReuso.invalid && cantidadReuso.touched" class="text-red-600 text-sm mt-1">
-              ⚠️ La cantidad debe ser mayor a 0.
-            </div>
-          </div>
-        </div>
-        <div>
-          <label for="nota" class="block text-sm font-medium text-blue-500 mb-2">
-            Nota: Los registros ya incluyen un System ID por defecto, 
-            en caso de que desee cambiarlo, ingrese uno nuevo. 
-            De lo contrario, deje el campo vacío.
-          </label>
-          </div>
-      </div>
-    </div>
-
-    <!-- BOTÓN ENVIAR -->
-    <div class="flex justify-end">
-      <button
-        type="submit"
-        class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition"
-      >
-        Enviar Simulación
+      <button (click)="closeAlert()" class="text-gray-500 hover:text-gray-700 ml-4">
+        ✖
       </button>
     </div>
+  </div>
 
-    <!-- ---------------------------
-     DIALOG DE ENVÍO EN TIEMPO REAL
-     --------------------------- -->
-    <div
-      *ngIf="showSendingDialog"
-      class="dialog-overlay flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      (click)="$event.target === $event.currentTarget && !isSubmitting && closeSendingDialog()"
+  <!-- ⚪ CONTENEDOR BLANCO (similar al de la imagen) -->
+  <div 
+    class="fixed-content bg-white rounded-2xl shadow-lg p-6 overflow-y-auto overflow-x-hidden animate-fade-in"
+    [ngClass]="{ 'sidebar-collapsed': isSideNavCollapsed, 'sidebar-expanded': !isSideNavCollapsed }">
+
+
+  
+
+  <!-- Header rediseñado con tipografía más prominente -->
+   <div>
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-5xl font-extrabold text-[#214F90] mb-2">Simulaciones</h1>
+        <p class="text-gray-600">
+          Configura los parámetros de tu simulación
+        </p>
+      </div>
+    </div>
+
+    <form #formulario="ngForm" (ngSubmit)="onSubmit($event, formulario)">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Sección SERVIDOR -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:border-[#17A9E0] hover:shadow-md transition-all">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1 h-6 bg-gradient-to-b from-[#214F90] to-[#17A9E0] rounded-full"></div>
+            <h2 class="text-xl font-bold text-[#214F90]">Servidor</h2>
+          </div>
+
+          <p class="text-gray-600 mb-6 ml-4">Seleccione el servidor hacia donde se enviarán los parámetros.</p>
+
+          <div class="ml-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del servidor</label>
+            <select
+              [(ngModel)]="selectedServer"
+              name="servidor"
+              required
+              #servidor="ngModel"
+              (change)="onServerChange()"
+              class="w-full md:w-3/4 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+            >
+              <option value=null>Seleccionar...</option>
+              <option *ngFor="let s of servers" [value]="s.name">{{ s.name }}</option>
+            </select>
+
+            <div *ngIf="servidor.invalid && servidor.touched" class="text-red-600 text-sm mt-2 ml-0">
+              ⚠️ Debes seleccionar un servidor.
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección CONEXIÓN -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 hover:border-[#17A9E0] hover:shadow-md transition-all">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1 h-6 bg-gradient-to-b from-[#214F90] to-[#17A9E0] rounded-full"></div>
+            <h2 class="text-xl font-bold text-[#214F90]">Tipo de Conexión</h2>
+          </div>
+
+          <p class="text-gray-600 mb-6 ml-4">Seleccione el tipo de conexión que desea implementar.</p>
+
+          <div class="ml-4 space-y-4">
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de conexión</label>
+              <select
+                [(ngModel)]="selectedConnection"
+                name="conexion"
+                required
+                #conexion="ngModel"
+                (change)="onConnectionChange(); toggleFields($event)"
+                class="w-full md:w-3/4 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              >
+                <option value=null>Seleccionar...</option>
+                <option *ngFor="let conn of filteredConnections" [value]="conn.name">{{ conn.name }}</option>
+              </select>
+
+              <div *ngIf="conexion.invalid && conexion.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Debes seleccionar un tipo de conexión.
+              </div>
+            </div>
+
+            <div *ngIf="showQueueField" class="pt-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Nombre cola</label>
+              <input
+                type="text"
+                [(ngModel)]="nombreCola"
+                name="nombreCola"
+                required
+                #nombreColaModel="ngModel"
+                placeholder="Nombre de la cola"
+                class="w-full md:w-3/4 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="nombreColaModel.invalid && nombreColaModel.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Debes ingresar el nombre de la cola.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- Sección TIPO DE SIMULACIÓN con nuevo estilo -->
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mt-6 hover:border-[#17A9E0] hover:shadow-md transition-all">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-1 h-6 bg-gradient-to-b from-[#214F90] to-[#17A9E0] rounded-full"></div>
+          <h2 class="text-xl font-bold text-[#214F90]">Tipo de Simulación</h2>
+        </div>
+        <p class="text-gray-600 mb-6 ml-4">Selecciona si deseas crear una nueva simulación o reutilizar una existente.</p>
+
+        <div class="ml-4 mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+          <select
+            [(ngModel)]="tipoSimulacion"
+            name="tipoSimulacion"
+            required
+            #tipoSimulacion="ngModel"
+            (change)="toggleFields($event)"
+            class="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+          >
+            <option value=null>Seleccionar...</option>
+            <option value="nuevo">Nuevo</option>
+            <option value="reuso">Reuso</option>
+          </select>
+          <div *ngIf="tipoSimulacion.invalid && tipoSimulacion.touched" class="text-red-600 text-sm mt-2">
+            ⚠️ Selecciona el tipo de simulación.
+          </div>
+        </div>
+
+        <!-- CAMPOS NUEVO con grid mejorado -->
+        <div *ngIf="showCamposNuevo" class="border-t border-gray-200 pt-6 ml-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-6">Configuración Nueva Simulación</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">System ID</label>
+              <input
+                type="text"
+                [(ngModel)]="systemId"
+                name="systemIdNuevo"
+                required
+                minlength="3"
+                #systemIdNuevo="ngModel"
+                placeholder="Ej: SMPP01"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="systemIdNuevo.invalid && systemIdNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Ingresa un System ID válido (mínimo 3 caracteres).
+              </div>
+            </div>
+
+            <div *ngIf="showPasswordField">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+              <input
+                type="password"
+                [(ngModel)]="password"
+                name="passwordNuevo"
+                required
+                minlength="4"
+                #passwordNuevo="ngModel"
+                placeholder="••••••"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="passwordNuevo.invalid && passwordNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Ingresa una contraseña (mínimo 4 caracteres).
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Short Code</label>
+              <input
+                type="text"
+                [(ngModel)]="sc"
+                name="scNuevo"
+                required
+                #scNuevo="ngModel"
+                placeholder="0800"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="scNuevo.invalid && scNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Ingresa un Short Code válido (4–6 dígitos).
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Encoding</label>
+              <select
+                [(ngModel)]="encoding"
+                name="encodingNuevo"
+                required
+                #encodingNuevo="ngModel"
+                (change)="onEncodingChange()"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              >
+                <option value=null>Seleccionar...</option>
+                <option value="0">0</option>
+                <option value="3">3</option>
+                <option value="8">8</option>
+              </select>
+              <div *ngIf="encodingNuevo.invalid && encodingNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Seleccione un encoding.
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Número de teléfono</label>
+              <input
+                type="text"
+                [(ngModel)]="numeroTelefono"
+                name="numeroTelefonoNuevo"
+                required
+                #numeroTelefonoNuevo="ngModel"
+                placeholder="Ej: 584121234567"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="numeroTelefonoNuevo.invalid && numeroTelefonoNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Ingresa un número válido en formato internacional (58412...).
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Mensaje</label>
+              <input
+                type="text"
+                [(ngModel)]="mensaje"
+                name="mensajeNuevo"
+                required
+                [attr.maxlength]="mensajeMaxLength"
+                #mensajeNuevo="ngModel"
+                placeholder="Mensaje de prueba"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Ingresa un mensaje (máx. {{ mensajeMaxLength || '∞' }} caracteres).
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+              <input
+                type="number"
+                [(ngModel)]="cantidad"
+                name="cantidadNuevo"
+                required
+                min="1"
+                #cantidadNuevo="ngModel"
+                placeholder="100"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="cantidadNuevo.invalid && cantidadNuevo.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ La cantidad debe ser mayor a 0.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REUSO con nuevo estilo -->
+        <div *ngIf="showCamposReuso" class="border-t border-gray-200 pt-6 ml-4">
+          <h3 class="text-lg font-bold text-gray-800 mb-6">Reutilizar Mensajes Existentes</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Base de Datos</label>
+              <select
+                [(ngModel)]="selectedDB"
+                name="bdd"
+                required
+                #bdd="ngModel"
+                id="bdd"
+                (change)="onDatabaseChange()"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              >
+                <option value=null>Seleccionar...</option>
+                <option *ngFor="let s of db" [value]="s.name">{{ s.name }}</option>
+              </select>
+              <div *ngIf="bdd.invalid && bdd.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Debes seleccionar una base de datos.
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Colección</label>
+              <select
+                [(ngModel)]="selectedCollection"
+                name="collection"
+                required
+                #collection="ngModel"
+                id="collection"
+                (change)="onCollectionChange()"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              >
+                <option value=null>Seleccionar...</option>
+                <option *ngFor="let c of collections" [value]="c">{{ c }}</option>
+              </select>
+              <div *ngIf="collection.invalid && collection.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ Debes seleccionar una colección.
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="documentsCount !== null" class="mb-6 p-3 bg-blue-50 rounded-lg border border-[#17A9E0]">
+            <p class="text-sm text-gray-700">
+              <span class="font-semibold text-[#214F90]">Total de documentos:</span>
+              <span class="font-bold text-[#17A9E0]">{{ documentsCount }}</span>
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label for="systemIdReuso" class="block text-sm font-medium text-gray-700 mb-2">System ID</label>
+              <input
+                id="systemIdReuso"
+                name="systemIdReuso"
+                [(ngModel)]="systemId"
+                type="text"
+                placeholder="100"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div *ngIf="showPasswordFieldReuso">
+              <label for="passwordReuso" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+              <input
+                id="passwordReuso"
+                name="passwordReuso"
+                [(ngModel)]="password"
+                type="password"
+                placeholder="••••••"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+            </div>
+
+            <div>
+              <label for="cantidadReuso" class="block text-sm font-medium text-gray-700 mb-2">Cantidad</label>
+              <input
+                id="cantidadReuso"
+                name="cantidadR"
+                [(ngModel)]="cantidadReuso"
+                type="number"
+                required
+                min="1"
+                #cantidadR="ngModel"
+                placeholder="100"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+              />
+              <div *ngIf="cantidadR.invalid && cantidadR.touched" class="text-red-600 text-sm mt-2">
+                ⚠️ La cantidad debe ser mayor a 0.
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <p class="text-sm text-amber-800">
+              <span class="font-semibold">ℹ️ Nota:</span> Los registros ya incluyen un System ID por defecto. 
+              Ingrese uno nuevo para cambiarlo o déjelo vacío.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón ENVIAR rediseñado con gradiente corporativo -->
+      <div class="flex justify-end my-6">
+        <button
+          type="submit"
+          class="px-8 py-3 bg-[#224F90] backdrop-blur-sm text-white font-semibold rounded-lg hover:bg-gradient-to-r hover:from-[#224F90] hover:to-[#18A9E1] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+        >
+          Enviar Simulación
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+  <!-- DIALOG DE ENVÍO EN TIEMPO REAL -->
+  <div
+    *ngIf="showSendingDialog"
+    class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-[9999] backdrop-blur-sm"
+    role="dialog"
+    aria-modal="true"
+    (click)="$event.target === $event.currentTarget && !isSubmitting && closeSendingDialog()"
+  >
+    <div 
+      class="bg-white w-10/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 max-h-[70vh] flex flex-col relative"
+      (click)="$event.stopPropagation()"
     >
-      <div 
-        class="bg-white w-10/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 max-h-[70vh] flex flex-col relative"
-        (click)="$event.stopPropagation()"
-      >
-        <div class="flex items-start justify-between">
+      <!-- Header -->
+      <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
             <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -488,38 +422,38 @@
           </div>
         </div>
 
-        <div
-          #sendingLogContainer
-          class="mt-4 overflow-y-auto flex-1 space-y-2 text-sm text-gray-700 pr-2"
-          style="scroll-behavior: smooth;"
-        >
-          <div *ngFor="let log of sendingLogs; let i = index; trackBy: trackByLogIndex" class="whitespace-pre-wrap">
-            <p [ngClass]="{
-                  'text-blue-600': log.startsWith('🚀'),
-                  'text-green-600': log.startsWith('✅'),
-                  'text-red-600': log.startsWith('❌'),
-                  'text-orange-600': log.startsWith('🔔')
-                }">
-              {{ log }}
-            </p>
-          </div>
+      <!-- Logs -->
+      <div
+        #sendingLogContainer
+        class="mt-4 overflow-y-auto flex-1 space-y-2 text-sm text-gray-700 pr-2"
+        style="scroll-behavior: smooth;"
+      >
+        <div *ngFor="let log of sendingLogs; let i = index; trackBy: trackByLogIndex " 
+             class="whitespace-pre-wrap">
+          <p [ngClass]="{
+                'text-blue-600': log.startsWith('🚀'),
+                'text-green-600': log.startsWith('✅'),
+                'text-red-600': log.startsWith('❌'),
+                'text-orange-600': log.startsWith('🔔')
+              }">
+            {{ log }}
+          </p>
         </div>
+      </div>
 
-        <div class="mt-4 flex items-center justify-end gap-2">
-          <button
-            *ngIf="!isSubmitting"
-            (click)="closeSendingDialog()"
-            class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-          >
-            Cerrar
-          </button>
-          <!-- muestra si sigue en proceso -->
-          <div *ngIf="isSubmitting" class="flex items-center gap-2 text-sm text-gray-600">
-            <div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <span>Enviando...</span>
-          </div>
+      <!-- Footer -->
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button
+          *ngIf="!isSubmitting"
+          (click)="closeSendingDialog()"
+          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+        >
+          Cerrar
+        </button>
+        <div *ngIf="isSubmitting" class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="w-4 h-4 border-2 border-[#17A9E0] border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-sm font-medium text-slate-600">Enviando...</span>
         </div>
       </div>
     </div>
-  </form>
-</div>
+  </div>

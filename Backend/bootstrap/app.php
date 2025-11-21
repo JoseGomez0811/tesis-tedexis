@@ -23,13 +23,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Alias para middleware personalizado
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'auth.sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
-        // Grupo de middleware para API con Sanctum
+        // Grupo de middleware para API
+        // NOTA: No incluimos EnsureFrontendRequestsAreStateful aquí porque estamos usando tokens Bearer
+        // en lugar de autenticación basada en cookies (stateful)
         $middleware->group('api', [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

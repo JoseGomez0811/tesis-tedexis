@@ -19,7 +19,7 @@ export const navbarData = [
   },
   {
     routeLink: 'nueva_conexion',
-    icon: 'https://www.svgrepo.com/show/529858/server-2.svg',
+    icon: 'https://www.svgrepo.com/show/448375/connection-gateway.svg',
     label: 'Conexiones',
     role: 'all'
   },
@@ -37,7 +37,7 @@ export const navbarData = [
   },
   {
     routeLink: 'registros',
-    icon: 'https://www.svgrepo.com/show/501673/permissions.svg',
+    icon: 'https://www.svgrepo.com/show/435930/register.svg',
     label: 'Registros',
     role: 'admin'
   }

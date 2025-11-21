@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule, NgForOf, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, User } from '../../services/auth.service';
+import { SidenavService } from '../../services/sidenav.service';
 import { ApiService } from '../../services/api.service';
+import { Subscription } from 'rxjs';
 
 type FilterType = 'all' | 'pending' | 'authorized' | 'rejected';
 type NotificationType = 'success' | 'error';
@@ -23,14 +25,57 @@ export class PermissionComponent implements OnInit {
     notificationType: NotificationType = 'success';
     loading: boolean = false;
 
+    alertVisible = false;
+    alertType: 'success' | 'error' | null = null;
+    alertMessage = '';
+
+    isSaving = false;
+    isDeleting = false;
+
+    isSideNavCollapsed = false;
+    private sidenavSubscription?: Subscription;
 
     constructor(
         private apiService: ApiService,
-        private authService: AuthService
+        private authService: AuthService,
+        private sidenavService: SidenavService
       ) {}
+
+      // ✅ Método para cerrar manualmente la notificación
+    closeAlert() {
+        this.alertVisible = false;
+    }
+
+    showAlert(type: 'success' | 'error', message: string) {
+        this.alertType = type;
+        this.alertMessage = message;
+        this.alertVisible = true;
+        setTimeout(() => (this.alertVisible = false), 4000);
+    }
+
+    private showNotificationMessage(message: string, type: NotificationType): void {
+        this.notificationMessage = message;
+        this.notificationType = type;
+        this.showNotification = true;
+        
+        setTimeout(() => {
+            this.showNotification = false;
+        }, 4000); // Cambié a 4000ms para coincidir con addConnection
+    }
 
     ngOnInit(): void {
         this.loadUsers();
+
+        this.isSideNavCollapsed = this.sidenavService.getCollapsed();
+        this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
+            this.isSideNavCollapsed = collapsed;
+        });
+    }
+
+    ngOnDestroy() {
+        if (this.sidenavSubscription) {
+        this.sidenavSubscription.unsubscribe();
+        }
     }
 
     private loadUsers(): void {
@@ -41,13 +86,13 @@ export class PermissionComponent implements OnInit {
                     this.users = response.data;
                     this.filterUsers();
                 } else {
-                    this.showNotificationMessage('Error al cargar usuarios', 'error');
+                    this.showAlert('error','Error al cargar usuarios');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error cargando usuarios:', error);
-                this.showNotificationMessage('Error al cargar usuarios', 'error');
+                this.showAlert('error','Error al cargar usuarios');
                 this.loading = false;
             }
         });
@@ -99,17 +144,20 @@ export class PermissionComponent implements OnInit {
                     // Actualizar el usuario en la lista local
                     user.authorization_status = 'authorized';
                     this.filterUsers();
-                    this.showNotificationMessage(`Petición de ${user.name} aceptada`, 'success');
+                    // this.showNotificationMessage(`Petición de ${user.name} aceptada`, 'success');
+                    this.showAlert('success', `Petición de ${user.name} aceptada ✅` );
                     // Registrar log de forma asíncrona
                     this.logAdminAction(`Se le autorizó el acceso al usuario {user}`, user.name);
                 } else {
-                    this.showNotificationMessage('Error al autorizar usuario', 'error');
+                    // this.showNotificationMessage('Error al autorizar usuario', 'error');
+                    this.showAlert('error', 'Error al autorizar usuario');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error autorizando usuario:', error);
-                this.showNotificationMessage('Error al autorizar usuario', 'error');
+                // this.showNotificationMessage('Error al autorizar usuario', 'error');
+                this.showAlert('error', 'Error al autorizar usuario');
                 this.loading = false;
             }
         });
@@ -126,31 +174,34 @@ export class PermissionComponent implements OnInit {
                     // Actualizar el usuario en la lista local
                     user.authorization_status = 'rejected';
                     this.filterUsers();
-                    this.showNotificationMessage(`Petición de ${user.name} rechazada`, 'error');
+                    // this.showNotificationMessage(`Petición de ${user.name} rechazada`, 'error');
+                    this.showAlert('success', `Petición de ${user.name} rechazada ✅`);
                     // Registrar log de forma asíncrona
                     this.logAdminAction(`Se le denegó la petición de acceso al usuario {user}`, user.name);
                 } else {
-                    this.showNotificationMessage('Error al rechazar usuario', 'error');
+                    // this.showNotificationMessage('Error al rechazar usuario', 'error');
+                    this.showAlert('error', 'Error al rechazar usuario');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error rechazando usuario:', error);
-                this.showNotificationMessage('Error al rechazar usuario', 'error');
+                // this.showNotificationMessage('Error al rechazar usuario', 'error');
+                this.showAlert('error', 'Error al rechazar usuario');
                 this.loading = false;
             }
         });
     }
 
-    private showNotificationMessage(message: string, type: NotificationType): void {
-        this.notificationMessage = message;
-        this.notificationType = type;
-        this.showNotification = true;
+    // private showNotificationMessage(message: string, type: NotificationType): void {
+    //     this.notificationMessage = message;
+    //     this.notificationType = type;
+    //     this.showNotification = true;
         
-        setTimeout(() => {
-            this.showNotification = false;
-        }, 3000);
-    }
+    //     setTimeout(() => {
+    //         this.showNotification = false;
+    //     }, 3000);
+    // }
 
     get hasFilteredUsers(): boolean {
         return this.filteredUsers.length > 0;
@@ -194,17 +245,20 @@ export class PermissionComponent implements OnInit {
             next: (response) => {
                 if (response.success) {
                     user.role = 'admin';
-                    this.showNotificationMessage(`${user.name} ahora es administrador`, 'success');
+                    // this.showNotificationMessage(`${user.name} ahora es administrador`, 'success');
+                    this.showAlert('success', `${user.name} ahora es administrador ✅`);
                     // Registrar log de forma asíncrona
                     this.logAdminAction(`Se le concedieron los permisos de administrador al usuario {user}`, user.name);
                 } else {
-                    this.showNotificationMessage('Error al asignar rol de administrador', 'error');
+                    // this.showNotificationMessage('Error al asignar rol de administrador', 'error');
+                    this.showAlert('error', 'Error al asignar rol de administrador');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error haciendo admin:', error);
-                this.showNotificationMessage('Error al hacer admin', 'error');
+                // this.showNotificationMessage('Error al hacer admin', 'error');
+                this.showAlert('error', 'Error al asignar rol de administrador');
                 this.loading = false;
             }
         });
@@ -219,17 +273,20 @@ export class PermissionComponent implements OnInit {
             next: (response) => {
                 if (response.success) {
                     user.role = 'user';
-                    this.showNotificationMessage(`${user.name} ya no es administrador`, 'success');
+                    // this.showNotificationMessage(`${user.name} ya no es administrador`, 'success');
+                    this.showAlert('success', `${user.name} ya no es administrador ✅`);
                     // Registrar log de forma asíncrona
                     this.logAdminAction(`Se le removió los permisos de administrador al usuario {user}`, user.name);
                 } else {
-                    this.showNotificationMessage('Error al quitar rol de administrador', 'error');
+                    // this.showNotificationMessage('Error al quitar rol de administrador', 'error');
+                    this.showAlert('error', 'Error al remover rol de administrador');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error quitando admin:', error);
-                this.showNotificationMessage('Error al quitar admin', 'error');
+                // this.showNotificationMessage('Error al quitar admin', 'error');
+                this.showAlert('error', 'Error al remover rol de administrador');
                 this.loading = false;
             }
         });
@@ -246,17 +303,20 @@ export class PermissionComponent implements OnInit {
                     // Actualizar el usuario en la lista local
                     user.authorization_status = 'rejected';
                     this.filterUsers();
-                    this.showNotificationMessage(`Petición de ${user.name} removida`, 'error');
+                    // this.showNotificationMessage(`Petición de ${user.name} removida`, 'error');
+                    this.showAlert('success', `Petición de ${user.name} removida ✅`);
                     // Registrar log de forma asíncrona
                     this.logAdminAction(`Se le removió la autorización de acceso al usuario {user}`, user.name);
                 } else {
-                    this.showNotificationMessage('Error al remover usuario', 'error');
+                    // this.showNotificationMessage('Error al remover usuario', 'error');
+                    this.showAlert('error', 'Error al remover usuario');
                 }
                 this.loading = false;
             },
             error: (error) => {
                 console.error('Error removiendo autorización:', error);
-                this.showNotificationMessage('Error al remover autorización', 'error');
+                // this.showNotificationMessage('Error al remover autorización', 'fsherror');
+                this.showAlert('error', 'Error al remover usuario');
                 this.loading = false;
             }
         });

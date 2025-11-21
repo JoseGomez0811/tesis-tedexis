@@ -1,17 +1,19 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { SidenavService } from '../../services/sidenav.service';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, NgForOf } from '@angular/common';
+import { CommonModule, NgForOf, NgClass } from '@angular/common';
 import { lastValueFrom } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-addConnection',
-  imports: [CommonModule, FormsModule, NgForOf],
+  imports: [CommonModule, FormsModule, NgForOf, NgClass],
   templateUrl: './addConnection.component.html',
   styleUrl: './addConnection.component.css',
 })
-export class AddConnectionComponent implements OnInit{
+export class AddConnectionComponent implements OnInit, OnDestroy{
   servers: any[] = [];
   selectedServer = '';
   puerto = '';
@@ -38,9 +40,17 @@ export class AddConnectionComponent implements OnInit{
   isSaving = false;
   isDeleting = false;
 
+  isSideNavCollapsed = false;
+  private sidenavSubscription?: Subscription;
+
+  showDeleteConfirm = false;
+  deleteTargetId: number | null = null;
+
+
   constructor(
     private apiService: ApiService,
-    private authService: AuthService
+    private authService: AuthService,
+    private sidenavService: SidenavService
   ) {}
 
   // ==============================
@@ -63,6 +73,18 @@ export class AddConnectionComponent implements OnInit{
   ngOnInit() {
     this.loadServers();
     this.loadConnections();
+    
+    // Suscribirse al estado del sidebar
+    this.isSideNavCollapsed = this.sidenavService.getCollapsed();
+    this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
+      this.isSideNavCollapsed = collapsed;
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.sidenavSubscription) {
+      this.sidenavSubscription.unsubscribe();
+    }
   }
 
   toggleForm() {
@@ -113,9 +135,31 @@ export class AddConnectionComponent implements OnInit{
     this.resetForm();
   }
 
+  // confirmDelete(id: number) {
+  //   if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
+  //   this.deleteServer(id);
+  // }
+
   confirmDelete(id: number) {
-    if (!confirm('¿Seguro que deseas eliminar este servidor?')) return;
-    this.deleteServer(id);
+    this.deleteTargetId = id;
+    this.showDeleteConfirm = true;
+  }
+
+  cancelDelete() {
+    this.showDeleteConfirm = false;
+    this.deleteTargetId = null;
+  }
+
+  confirmDeleteFinal() {
+    if (!this.deleteTargetId) return;
+
+    this.showDeleteConfirm = false;
+
+    // Activa overlay de “Eliminando…”
+    this.isDeleting = true;
+
+    this.deleteServer(this.deleteTargetId);
+    this.deleteTargetId = null;
   }
 
   async deleteServer(id: number) {

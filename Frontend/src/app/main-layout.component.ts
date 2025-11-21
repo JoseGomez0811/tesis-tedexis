@@ -3,36 +3,36 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SidenavComponent } from './components/sidenav/sidenav.component';
 import { NgClass } from '@angular/common';
+import { SidenavService } from './services/sidenav.service';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, SidenavComponent, NgClass],
+  imports: [RouterOutlet, SidenavComponent],
   template: `
-    <app-sidenav (onToggleSideNav)="onToggleSideNav($event)"></app-sidenav>
-    <div class="content" [ngClass]="{ 'content-collapsed': isSideNavCollapsed, 'content-expanded': !isSideNavCollapsed }">
-      <router-outlet></router-outlet>
+    <div class="main-container">
+      <app-sidenav (onToggleSideNav)="onToggleSideNav($event)"></app-sidenav>
+      <div class="content">
+        <router-outlet></router-outlet>
+      </div>
     </div>
   `,
   styles: [`
-    .content {
-      transition: margin-left 0.3s ease;
+    .main-container {
       min-height: 100vh;
-      background-color: #f5f5f5;
-      padding: 1rem;
+      width: 100%;
+      background-color: #F2F3F7;
+      position: relative;
     }
-    .content-collapsed {
-      margin-left: 4rem; /* 64px - corresponde al ancho del sidebar colapsado */
-    }
-    .content-expanded {
-      margin-left: 16rem; /* 256px - corresponde al ancho del sidebar expandido */
+    
+    .content {
+      min-height: 100vh;
+      background-color: transparent;
+      padding: 0;
     }
     
     @media (max-width: 768px) {
-      .content-collapsed {
-        margin-left: 4rem;
-      }
-      .content-expanded {
+      .content {
         margin-left: 0;
       }
     }
@@ -41,6 +41,13 @@ import { NgClass } from '@angular/common';
 export class MainLayoutComponent {
   isSideNavCollapsed = false;
   screenWidth = 0;
+  
+  constructor(private sidenavService: SidenavService) {
+    // Suscribirse al estado del sidebar
+    this.sidenavService.isCollapsed$.subscribe(collapsed => {
+      this.isSideNavCollapsed = collapsed;
+    });
+  }
   
   onToggleSideNav(data: {screenWidth: number, collapsed: boolean}): void {
     this.screenWidth = data.screenWidth;

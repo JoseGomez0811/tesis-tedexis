@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\UsersController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     // --- SERVERS ---
     Route::get('servers', [ServerController::class, 'index']);
     Route::post('servers', [ServerController::class, 'store']);

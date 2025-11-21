@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { navbarData } from './nav-data';
 import { AuthService, User } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
+import { SidenavService } from '../../services/sidenav.service';
 
 interface SideNavToggle {
   screenWidth: number;
@@ -30,7 +31,8 @@ export class SidenavComponent implements OnInit {
 
   constructor(
     private apiService: ApiService,
-    private authService: AuthService
+    private authService: AuthService,
+    private sidenavService: SidenavService
   ) {}
 
   @HostListener('window:resize')
@@ -43,7 +45,6 @@ export class SidenavComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadUsers();
     this.screenWidth = window.innerWidth;
 
     const currentUser = this.authService.getUser();
@@ -58,6 +59,11 @@ export class SidenavComponent implements OnInit {
       email: currentUser.email || '',
     };
 
+    // Solo cargar usuarios si es admin
+    if (this.authService.isAdmin()) {
+      this.loadUsers();
+    }
+
     this.loadNavData();
     this.emitToggle();
 
@@ -67,7 +73,7 @@ export class SidenavComponent implements OnInit {
     }
   }
 
-  /** 🔹 Carga todos los usuarios (solo para mantener lista actualizada) */
+  /** 🔹 Carga todos los usuarios (solo para administradores) */
   private loadUsers(): void {
     this.loading = true;
     this.authService.getAllUsers().subscribe({
@@ -123,6 +129,7 @@ export class SidenavComponent implements OnInit {
   }
 
   private emitToggle(): void {
+    this.sidenavService.setCollapsed(this.collapsed);
     this.onToggleSideNav.emit({
       collapsed: this.collapsed,
       screenWidth: this.screenWidth

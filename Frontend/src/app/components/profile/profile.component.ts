@@ -1,19 +1,21 @@
-import { Component, OnInit, NgZone, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, NgZone, ChangeDetectorRef, ElementRef, ViewChild, OnDestroy } from '@angular/core';
+import { CommonModule, NgForOf, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
+import { SidenavService } from '../../services/sidenav.service';
 import { Router } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgForOf, NgClass],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.css']
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
   user: any = null;
   simulations: any[] = [];
   filteredSimulations: any[] = [];
@@ -49,9 +51,13 @@ export class ProfileComponent implements OnInit {
 
   lastSimulationDate: string | null = null;
 
+  isSideNavCollapsed = false;
+  private sidenavSubscription?: Subscription;
+
   constructor(
     private apiService: ApiService,
     private authService: AuthService,
+    private sidenavService: SidenavService,
     private router: Router,
     private cd: ChangeDetectorRef,
     private ngZone: NgZone
@@ -131,14 +137,43 @@ export class ProfileComponent implements OnInit {
         fullName: user.name || '',
         email: user.email || '',
         picture: user.avatar || '',
-        accessLevel: 'Usuario',
+        accessLevel: user.role || 'Usuario',
       };
     } else {
       this.authService.logout();
       return;
     }
 
-    this.loadData();
+    // Verificar que el token esté disponible antes de cargar datos
+    // Esto previene errores 401 cuando el componente se carga inmediatamente después del callback
+    const token = this.authService.getToken();
+    if (!token) {
+      console.warn('⚠️ Token no disponible, esperando...');
+      // Esperar un poco y verificar nuevamente
+      setTimeout(() => {
+        const retryToken = this.authService.getToken();
+        if (retryToken) {
+          this.loadData();
+        } else {
+          console.error('❌ Token no disponible después de esperar');
+          this.authService.logout();
+        }
+      }, 200);
+    } else {
+      this.loadData();
+    }
+
+    // Suscribirse al estado del sidebar
+    this.isSideNavCollapsed = this.sidenavService.getCollapsed();
+    this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
+      this.isSideNavCollapsed = collapsed;
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.sidenavSubscription) {
+      this.sidenavSubscription.unsubscribe();
+    }
   }
 
   loadData() {
@@ -567,8 +602,8 @@ export class ProfileComponent implements OnInit {
 
   getAccessLevelClass(level: string) {
     const base = 'px-2 py-1 text-xs font-medium rounded-full';
-    if (level === 'Administrador') return `${base} bg-red-100 text-red-700`;
-    if (level === 'Avanzado') return `${base} bg-yellow-100 text-yellow-700`;
+    if (level === 'admin') return `${base} bg-yellow-100 text-yellow-700`;
+    if (level === 'user') return `${base} bg-green-100 text-green-700`;
     return `${base} bg-green-100 text-green-700`;
   }
 }

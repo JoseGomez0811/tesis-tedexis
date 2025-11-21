@@ -51,6 +51,9 @@ export class AuthService {
   }
 
   handleAuthSuccess(token: string, userData?: User): void {
+    console.log('🔐 Guardando token y datos de usuario...');
+    
+    // Guardar token y usuario de forma síncrona
     localStorage.setItem('auth_token', token);
     this.tokenSubject.next(token);
 
@@ -58,7 +61,52 @@ export class AuthService {
       localStorage.setItem('auth_user', JSON.stringify(userData));
     }
 
-    this.router.navigate(['/app/perfil']);
+    // Verificar inmediatamente que el token se guardó
+    const savedToken = localStorage.getItem('auth_token');
+    if (savedToken !== token) {
+      console.error('❌ Error: Token no se guardó correctamente');
+      this.handleAuthError('auth_failed');
+      return;
+    }
+
+    console.log('✅ Token guardado correctamente, obteniendo cookie CSRF...');
+
+    // Obtener cookie CSRF antes de navegar para asegurar que las cookies de sesión estén listas
+    // Esto previene problemas de timing donde los componentes hacen peticiones antes de que
+    // las cookies de Sanctum estén establecidas
+    this.getCsrfCookie().subscribe({
+      next: () => {
+        console.log('✅ Cookie CSRF obtenida, esperando sincronización...');
+        // Aumentar el delay para asegurar que todo esté sincronizado
+        // Esto da tiempo para que el token esté disponible en el interceptor
+        setTimeout(() => {
+          // Verificar nuevamente que el token esté disponible
+          const finalToken = localStorage.getItem('auth_token');
+          if (finalToken && finalToken === token) {
+            console.log('✅ Token verificado, navegando a perfil...');
+            this.router.navigate(['/app/perfil']);
+          } else {
+            console.error('❌ Error: Token no disponible después del delay');
+            this.handleAuthError('auth_failed');
+          }
+        }, 300); // Aumentado de 100ms a 300ms para dar más tiempo
+      },
+      error: (error) => {
+        console.error('❌ Error obteniendo cookie CSRF:', error);
+        // Aún así, intentar navegar después de un delay más largo
+        // para dar tiempo a que el token esté disponible
+        setTimeout(() => {
+          const finalToken = localStorage.getItem('auth_token');
+          if (finalToken && finalToken === token) {
+            console.log('⚠️ Navegando sin cookie CSRF, pero con token válido');
+            this.router.navigate(['/app/perfil']);
+          } else {
+            console.error('❌ Token no disponible, no se puede navegar');
+            this.handleAuthError('auth_failed');
+          }
+        }, 300);
+      }
+    });
   }
 
   handleAuthError(error: string, status?: string, firstLogin?: string): void {

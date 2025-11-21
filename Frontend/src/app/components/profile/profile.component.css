@@ -35,3 +35,114 @@ body.dialog-open {
 .bg-white.rounded-lg.p-4 {
   animation: fadeInUp 0.3s ease-out;
 }
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* 🔥 CONTENEDOR FIJO ADAPTADO A 1REM DE SEPARACIÓN */
+.fixed-content {
+  position: fixed;
+  top: 1rem;
+  bottom: 1rem;
+  right: 1rem;
+  
+  /* Mantiene tamaño fijo sin importar contenido */
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* Evita scroll en body */
+  max-height: calc(100vh - 2rem);
+  
+  /* Transición suave cuando cambia el sidebar */
+  transition: left 0.3s ease;
+  
+  /* Asegurar que el div blanco esté por debajo del sidebar */
+  z-index: 1;
+}
+
+/* Cuando el sidebar está colapsado: 
+   - Sidebar empieza en left-4 = 1rem
+   - Sidebar tiene ancho w-20 = 5rem (80px en Tailwind)
+   - Sidebar termina en: 1rem + 5rem = 6rem
+   - Div blanco debe empezar en: 6rem + 1rem de separación = 7rem */
+.fixed-content.sidebar-collapsed {
+  left: calc(1rem + 5rem + 1rem); /* left del sidebar + ancho colapsado + separación de 1rem */
+}
+
+/* Cuando el sidebar está expandido:
+   - Sidebar empieza en left-4 = 1rem
+   - Sidebar tiene ancho w-64 = 16rem (256px en Tailwind)
+   - Sidebar termina en: 1rem + 16rem = 17rem
+   - Div blanco debe empezar en: 17rem + 1rem de separación = 18rem */
+.fixed-content.sidebar-expanded {
+  left: calc(1rem + 16rem + 1rem); /* left del sidebar + ancho expandido + separación de 1rem */
+}
+
+/* Responsive: en móviles el sidebar siempre está colapsado */
+@media (max-width: 768px) {
+  .fixed-content.sidebar-collapsed,
+  .fixed-content.sidebar-expanded {
+    left: calc(1rem + 5rem + 1rem); /* Mismo cálculo que cuando está colapsado */
+  }
+}
+
+/* Estilos globales */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  background: #F2F3F7;
+  overflow: hidden;
+}
+
+/* Scroll personalizado */
+.fixed-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.fixed-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.fixed-content::-webkit-scrollbar-thumb {
+  background: #17A9E0;
+  border-radius: 10px;
+}
+
+.fixed-content::-webkit-scrollbar-thumb:hover {
+  background: #214F90;
+}
+
+@keyframes scale-in {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}

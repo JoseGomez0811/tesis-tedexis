@@ -1,10 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { FormsModule } from '@angular/forms';
-import { CommonModule, NgForOf } from '@angular/common';
+import { SidenavService } from '../../services/sidenav.service';
+import { FormsModule, NgForm } from '@angular/forms';
+import { CommonModule, NgForOf, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
+import { Subscription } from 'rxjs';
 
 
 @Component({
@@ -14,7 +16,7 @@ import { lastValueFrom } from 'rxjs';
   templateUrl: './testing.component.html',
   styleUrls: ['./testing.component.css']
 })
-export class TestingComponent implements OnInit {
+export class TestingComponent implements OnInit, OnDestroy {
   servers: any[] = [];
   db: any[] = [];
   collections: any[] = [];
@@ -33,32 +35,33 @@ export class TestingComponent implements OnInit {
     email: '',
   };
 
-  selectedServer = '';
-  selectedConnection = '';
-  selectedDB = '';
-  selectedCollection = '';
-  tipoConexion = '';
-  tipoSimulacion = '';
+  // <-- ahora permiten null para distinguir "sin valor" de ""
+  selectedServer: string | null = null;
+  selectedConnection: string | null = null;
+  selectedDB: string | null = null;
+  selectedCollection: string | null = null;
+  tipoConexion: string | null = null;
+  tipoSimulacion: string | null = null;
   showQueueField = false;
-  nombreCola = '';
-  dbPassword = '';
-  dbSystemID = '';
+  nombreCola: string | null = null;
+  dbPassword: string | null = null;
+  dbSystemID: string | null = null;
   documentsCount = 0;
 
-  // Campos nuevo
-  numeroTelefono = '';
-  mensaje = '';
+  // Campos nuevo (permitir null)
+  numeroTelefono: string | null = null;
+  mensaje: string | null = null;
   cantidad: number | null = null;
-  systemId = '';
-  password = '';
-  sc = '';
-  encoding = '';
-  sarSegmentSeqNum = '';
-  sarMsgRefNum = '';
-  sarTotalSegments = '';
+  systemId: string | null = null;
+  password: string | null = null;
+  sc: string | null = null;
+  encoding: string | null = null;
+  sarSegmentSeqNum: string | null = null;
+  sarMsgRefNum: string | null = null;
+  sarTotalSegments: string | null = null;
 
   // Campos reuso
-  baseDeDatos = '';
+  baseDeDatos: string | null = null;
   cantidadReuso: number | null = null;
 
   showNuevoFields = false;
@@ -74,10 +77,13 @@ export class TestingComponent implements OnInit {
   sendingLogs: string[] = [];
   showSendingDialog = false;
 
+  isSideNavCollapsed = false;
+  private sidenavSubscription?: Subscription;
 
   constructor(
     private apiService: ApiService,
     private authService: AuthService,
+    private sidenavService: SidenavService,
     private cd: ChangeDetectorRef,
     private ngZone: NgZone
   ) {}
@@ -131,8 +137,10 @@ export class TestingComponent implements OnInit {
   }
 
   closeSendingDialog() {
-    this.showSendingDialog = false;
-    this.sendingLogs = [];
+    if (!this.isSubmitting) {
+      this.showSendingDialog = false;
+      this.sendingLogs = [];
+    }
   }
 
   // Método mejorado para cerrar el dialog y mostrar alerta
@@ -186,6 +194,17 @@ export class TestingComponent implements OnInit {
       },
       error: err => console.error('Error cargando conexiones:', err)
     });
+
+    this.isSideNavCollapsed = this.sidenavService.getCollapsed();
+    this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
+      this.isSideNavCollapsed = collapsed;
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.sidenavSubscription) {
+      this.sidenavSubscription.unsubscribe();
+    }
   }
 
   get selectedConnectionType(): string {
@@ -215,9 +234,9 @@ export class TestingComponent implements OnInit {
 
   onServerChange() {
     this.filterConnections();
-    this.selectedConnection = '';
+    this.selectedConnection = null;
     this.showQueueField = false;
-    this.tipoSimulacion = '';
+    this.tipoSimulacion = null;
     this.showNuevoFields = false;
     this.showReusoFields = false;
   }
@@ -237,9 +256,9 @@ export class TestingComponent implements OnInit {
   onConnectionChange() {
     const selected = this.filteredConnections.find(conn => conn.name === this.selectedConnection);
     this.showQueueField = selected && selected.type && selected.type.toLowerCase() === 'mq';
-    if (!this.showQueueField) this.nombreCola = '';
+    if (!this.showQueueField) this.nombreCola = null;
 
-    this.tipoSimulacion = '';
+    this.tipoSimulacion = null;
     this.showNuevoFields = false;
     this.showReusoFields = false;
   }
@@ -342,14 +361,14 @@ export class TestingComponent implements OnInit {
         const doc = res && res.document ? res.document : res;
         this.selectedDocument = doc;
         console.log('✅ Documento detallado cargado:', doc);
-        this.systemId = doc.SystemID || doc.systemId || '';
-        this.numeroTelefono = doc.submitSm.destAddress || doc.phoneNumber || '';
-        this.mensaje = doc.submitSm.shortMessageString || doc.Text || '';
-        this.sc = doc.shortCode || doc.ShortCode || '';
-        this.encoding = doc.Encoding || doc.submitSm.dataCoding || '';
-        this.sarSegmentSeqNum = doc.SAR_SEGMENT_SEQNUM || '';
-        this.sarMsgRefNum = doc.SAR_MSG_REF_NUM || '';
-        this.sarTotalSegments = doc.SAR_TOTAL_SEGMENTS || '';
+        this.systemId = doc.SystemID || doc.systemId || null;
+        this.numeroTelefono = doc.submitSm?.destAddress || doc.phoneNumber || null;
+        this.mensaje = doc.submitSm?.shortMessageString || doc.Text || null;
+        this.sc = doc.shortCode || doc.ShortCode || null;
+        this.encoding = doc.Encoding || doc.submitSm?.dataCoding || null;
+        this.sarSegmentSeqNum = doc.SAR_SEGMENT_SEQNUM || null;
+        this.sarMsgRefNum = doc.SAR_MSG_REF_NUM || null;
+        this.sarTotalSegments = doc.SAR_TOTAL_SEGMENTS || null;
 
         console.table({
           systemId: this.systemId,
@@ -360,7 +379,7 @@ export class TestingComponent implements OnInit {
           sarSegmentSeqNum: this.sarSegmentSeqNum,
           sarMsgRefNum: this.sarMsgRefNum,
           sarTotalSegments: this.sarTotalSegments,
-      });
+        });
       },
       error: err => {
         console.error('❌ Error cargando el documento detallado:', err);
@@ -383,30 +402,38 @@ export class TestingComponent implements OnInit {
     console.log('📞 Números de teléfono procesados:', this.phoneNumbers);
   }
 
-  resetForm() {
-    this.selectedServer = '';
-    this.selectedConnection = '';
-    this.selectedDB = '';
-    this.selectedCollection = '';
-    this.tipoConexion = '';
-    this.tipoSimulacion = '';
+  // resetForm que limpia NgForm y variables del componente
+  resetForm(formulario?: NgForm) {
+    if (formulario) {
+      formulario.resetForm();
+    }
+
+    // RESETEA TODAS LAS VARIABLES DEL FORMULARIO a null (estado "sin valor")
+    this.selectedServer = null;
+    this.selectedConnection = null;
+    this.selectedDB = null;
+    this.selectedCollection = null;
+    this.tipoConexion = null;
+    this.tipoSimulacion = null;
     this.showQueueField = false;
-    this.nombreCola = '';
-    this.dbPassword = '';
-    this.dbSystemID = '';
-    this.numeroTelefono = '';
+    this.nombreCola = null;
+    this.dbPassword = null;
+    this.dbSystemID = null;
+    this.numeroTelefono = null;
     this.phoneNumbers = [];
-    this.mensaje = '';
+    this.mensaje = null;
     this.cantidad = null;
-    this.systemId = '';
-    this.password = '';
-    this.sc = '';
-    this.encoding = '';
-    this.baseDeDatos = '';
+    this.systemId = null;
+    this.password = null;
+    this.sc = null;
+    this.encoding = null;
+    this.baseDeDatos = null;
     this.cantidadReuso = null;
+    this.documentsCount = 0;
     this.showNuevoFields = false;
     this.showReusoFields = false;
-    this.isSubmitting = false;
+    this.mensajeMaxLength = null;
+    // NOTA: isSubmitting se controla desde onSubmit / finally, NO lo reseteamos aquí por seguridad
   }
 
   getRandomDocuments(array: any[], count: number): any[] {
@@ -415,28 +442,28 @@ export class TestingComponent implements OnInit {
   }
 
   private logSimulationAction(action: string, id: string): void {
-        const currentUser = this.authService.getUser();
-        if (!currentUser) {
-            console.warn('⚠️ No hay usuario autenticado para registrar log');
-            return;
-        }
-
-        // Usar el usuario actual directamente sin necesidad de buscar en la API
-        const logData = {
-            id_user: currentUser.id,
-            id_server: null,
-            id_connection: null,
-            id_db: null,
-            id_simulation: id || null,
-            description: action.replace('{user}', currentUser.name || 'Desconocido'),
-        };
-
-        // Enviar log de forma asíncrona sin bloquear la UI
-        this.apiService.storeLogs(logData).subscribe({
-            next: () => console.log('✅ Log guardado correctamente'),
-            error: (err) => console.error('❌ Error al guardar log:', err),
-        });
+    const currentUser = this.authService.getUser();
+    if (!currentUser) {
+        console.warn('⚠️ No hay usuario autenticado para registrar log');
+        return;
     }
+
+    // Usar el usuario actual directamente sin necesidad de buscar en la API
+    const logData = {
+        id_user: currentUser.id,
+        id_server: null,
+        id_connection: null,
+        id_db: null,
+        id_simulation: id || null,
+        description: action.replace('{user}', currentUser.name || 'Desconocido'),
+    };
+
+    // Enviar log de forma asíncrona sin bloquear la UI
+    this.apiService.storeLogs(logData).subscribe({
+        next: () => console.log('✅ Log guardado correctamente'),
+        error: (err) => console.error('❌ Error al guardar log:', err),
+    });
+  }
 
   onEncodingChange() {
     const encodingValue = Number(this.encoding);
@@ -452,208 +479,195 @@ export class TestingComponent implements OnInit {
     }
   }
 
-  async onSubmit(event: Event) {
+  async onSubmit(event: Event, formulario: NgForm) {
     event.preventDefault();
-
-    if (this.isSubmitting) return;
-    this.isSubmitting = true;
-
-    // --- Validaciones base ---
-    if (!this.selectedServer) {
-      this.showAlert('error', 'Debes seleccionar un servidor.');
-      this.isSubmitting = false;
-      return;
-    }
-
-    if (!this.selectedConnection) {
-      this.showAlert('error', 'Debes seleccionar un tipo de conexión.');
-      this.isSubmitting = false;
-      return;
-    }
-
-    if (this.showQueueField && (!this.nombreCola || this.nombreCola.trim().length === 0)) {
-      this.showAlert('error', 'Debes ingresar el nombre de la cola.');
-      this.isSubmitting = false;
-      return;
-    }
-
-    if (!this.tipoSimulacion) {
-      this.showAlert('error', 'Debes seleccionar el tipo de simulación.');
-      this.isSubmitting = false;
-      return;
-    }
-
-    // --- Validaciones según tipo ---
-    if (this.tipoSimulacion === 'nuevo') {
-      // System ID
-      if (!this.systemId || this.systemId.trim().length < 3 || !/^[A-Za-z0-9_-]+$/.test(this.systemId)) {
-        this.showAlert('error', 'Ingresa un System ID válido (mínimo 3 caracteres, sin espacios).');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Contraseña
-      if (!this.password || this.password.trim().length < 4) {
-        this.showAlert('error', 'La contraseña debe tener al menos 4 caracteres.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Número de teléfono
-      const phoneRegex = /^\+[0-9]{10,15}$/;
-      if (!this.numeroTelefono || !phoneRegex.test(this.numeroTelefono)) {
-        this.showAlert('error', 'Ingresa un número válido en formato internacional (+58412...).');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Mensaje
-      // if (!this.mensaje || this.mensaje.trim().length === 0 || this.mensaje.length > 160) {
-      //   this.showAlert('error', 'El mensaje es obligatorio y no puede superar los 160 caracteres.');
-      //   this.isSubmitting = false;
-      //   return;
-      // }
-
-      if (!this.mensaje || this.mensaje.trim().length === 0) {
-        this.showAlert('error', 'El mensaje es obligatorio.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      const encodingValue = Number(this.encoding);
-
-      if (encodingValue === 3 && this.mensaje.length > 160) {
-        this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      if (encodingValue === 8 && this.mensaje.length > 170) {
-        this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Cantidad
-      if (!this.cantidad || this.cantidad <= 0) {
-        this.showAlert('error', 'La cantidad debe ser mayor a 0.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Short Code
-      if (!this.sc || !/^[0-9]{4,6}$/.test(this.sc)) {
-        this.showAlert('error', 'Ingresa un Short Code válido (4–6 dígitos).');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Encoding
-      // if (!this.encoding || !/^[A-Za-z0-9-]+$/.test(this.encoding)) {
-      //   this.showAlert('error', 'Ingresa un formato de encoding válido (ej: UTF-8).');
-      //   this.isSubmitting = false;
-      //   return;
-      // }
-
-      if (!this.encoding) {
-        this.showAlert('error', 'Debes seleccionar un encoding.');
-        this.isSubmitting = false;
-        return;
-      }
-    }
-
-    if (this.tipoSimulacion === 'reuso') {
-      // Base de datos
-      if (!this.selectedDB) {
-        this.showAlert('error', 'Debes seleccionar una base de datos.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Colección
-      if (!this.selectedCollection) {
-        this.showAlert('error', 'Debes seleccionar una colección.');
-        this.isSubmitting = false;
-        return;
-      }
-
-      // Cantidad
-      if (!this.cantidadReuso || this.cantidadReuso <= 0) {
-        this.showAlert('error', 'La cantidad de reuso debe ser mayor a 0.');
-        this.isSubmitting = false;
-        return;
-      }
-    }
-
-    // ✅ Si pasa todas las validaciones
-    this.showAlert('success', 'Validaciones completadas correctamente. Enviando simulación...');
+    console.log('🔵 onSubmit iniciado - isSubmitting:', this.isSubmitting);
 
     if (this.isSubmitting) {
+      console.log('⚠️ Ya hay una simulación en proceso');
       this.showAlert('error', 'Ya hay una simulación en proceso. Por favor espera.');
       return;
     }
-
-    // al iniciar envío:
+    
     this.isSubmitting = true;
-    //this.showAlert('success', 'Enviando simulaciones...'); // si quieres mantener el toast inicial
-    this.sendingLogs = [];            // limpiar logs previos
-    this.showSendingDialog = true;    // mostrar el dialog de logs
-    this.addLog(`🔔 Proceso iniciado: ${new Date().toLocaleString()}`);
-    //this.showAlert('success', 'Iniciando envío de simulaciones...');
-
-    // Procesar los números ingresados antes de enviar
-    this.processPhoneNumbers();
-
-    const selectedServer = this.servers.find(server => server.name === this.selectedServer);
-    const serverUrl = selectedServer?.url;
-    const serverID = selectedServer?.id_server;
-    //const selectedConnection = this.connections.find(connection => connection.name === this.selectedConnection);
-    const selectedConnection = this.filteredConnections.find(connection => connection.name === this.selectedConnection);
-    const connectionPort = selectedConnection?.port;
-    const connectionType = selectedConnection?.type;
-    const connectionID = selectedConnection?.id_connection;
-    const selectedDatabase = this.db.find(database => database.name === this.selectedDB);
-    const dbId = selectedDatabase?.id;
-
-    // Obtener usuario actual y proteger el acceso a su propiedad `name`.
-    const currentUser = this.authService.getUser();
-    let matchedUser: any = null;
-
-    if (currentUser && currentUser.name) {
-      console.log('👤 Usuario cargado. Nombre:', currentUser.name);
-      try {
-        const users = await lastValueFrom(this.apiService.getUsers());
-        // Varias APIs devuelven directamente un array o un objeto { data: [...] }
-        const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
-        matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
-      } catch (err) {
-        console.error('❌ Error obteniendo usuarios para emparejar:', err);
-        // No bloqueamos todo el proceso por un fallo al obtener la lista de usuarios;
-        // matchedUser permanecerá en null y el id_user será enviado como null.
-      }
-    } else {
-      console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
-      this.authService.logout();
-      this.isSubmitting = false;
-      return;
-    }
-
-    const simulationDataBase: any = {
-      hostServer: serverUrl,
-      portConnection: connectionPort,
-      typeConnection: connectionType,
-      nameQueue: this.nombreCola,
-      // id_connection: connectionID,
-      // id_db: dbId,
-    };
-
-    const storeDataBase: any = {
-      id_connection: connectionID,
-      nameQueue: this.nombreCola || null,
-      id_db: dbId || null,
-    };
+    console.log('✅ isSubmitting establecido en true');
 
     try {
+      // --- Validaciones base ---
+      const queueNameFromForm = typeof formulario?.value?.nombreCola === 'string'
+        ? formulario.value.nombreCola
+        : (this.nombreCola ?? '');
+      const normalizedQueueName = queueNameFromForm ? queueNameFromForm.trim() : '';
+
+      if (!this.selectedServer) {
+        this.showAlert('error', 'Debes seleccionar un servidor.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      if (!this.selectedConnection) {
+        this.showAlert('error', 'Debes seleccionar un tipo de conexión.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      if (this.showQueueField && normalizedQueueName.length === 0) {
+        this.showAlert('error', 'Debes ingresar el nombre de la cola.');
+        this.isSubmitting = false;
+        return;
+      }
+      this.nombreCola = this.showQueueField ? normalizedQueueName : null;
+
+      if (!this.tipoSimulacion) {
+        this.showAlert('error', 'Debes seleccionar el tipo de simulación.');
+        this.isSubmitting = false;
+        return;
+      }
+
+      // --- Validaciones según tipo ---
+      if (this.tipoSimulacion === 'nuevo') {
+        const requiresPassword = this.selectedConnectionType === 'smpp';
+
+        // System ID
+        if (!this.systemId || this.systemId.trim().length < 3 || !/^[A-Za-z0-9_-]+$/.test(this.systemId)) {
+          this.showAlert('error', 'Ingresa un System ID válido (mínimo 3 caracteres, sin espacios).');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Contraseña
+        if (requiresPassword && (!this.password || this.password.trim().length < 4)) {
+          this.showAlert('error', 'La contraseña debe tener al menos 4 caracteres.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Número de teléfono
+        const phoneRegex = /^[0-9]{10,15}$/;
+        if (!this.numeroTelefono || !phoneRegex.test(this.numeroTelefono)) {
+          this.showAlert('error', 'Ingresa un número válido en formato internacional (58412...).');
+          this.isSubmitting = false;
+          return;
+        }
+
+        if (!this.mensaje || this.mensaje.trim().length === 0) {
+          this.showAlert('error', 'El mensaje es obligatorio.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        const encodingValue = Number(this.encoding);
+
+        if (encodingValue === 3 && (this.mensaje?.length ?? 0) > 160) {
+          this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        if (encodingValue === 8 && (this.mensaje?.length ?? 0) > 170) {
+          this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Cantidad
+        if (!this.cantidad || this.cantidad <= 0) {
+          this.showAlert('error', 'La cantidad debe ser mayor a 0.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Short Code
+        if (!this.sc || !/^[0-9]{4,6}$/.test(this.sc)) {
+          this.showAlert('error', 'Ingresa un Short Code válido (4–6 dígitos).');
+          this.isSubmitting = false;
+          return;
+        }
+
+        if (!this.encoding) {
+          this.showAlert('error', 'Debes seleccionar un encoding.');
+          this.isSubmitting = false;
+          return;
+        }
+      }
+
+      if (this.tipoSimulacion === 'reuso') {
+        // Base de datos
+        if (!this.selectedDB) {
+          this.showAlert('error', 'Debes seleccionar una base de datos.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Colección
+        if (!this.selectedCollection) {
+          this.showAlert('error', 'Debes seleccionar una colección.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Cantidad
+        if (!this.cantidadReuso || this.cantidadReuso <= 0) {
+          this.showAlert('error', 'La cantidad de reuso debe ser mayor a 0.');
+          this.isSubmitting = false;
+          return;
+        }
+      }
+
+      // ✅ Si pasa todas las validaciones
+      console.log('✅ Todas las validaciones pasaron, iniciando envío...');
+      
+      // al iniciar envío:
+      this.sendingLogs = [];            // limpiar logs previos
+      this.showSendingDialog = true;    // mostrar el dialog de logs
+      this.addLog(`🔔 Proceso iniciado: ${new Date().toLocaleString()}`);
+
+      // Procesar los números ingresados antes de enviar
+      this.processPhoneNumbers();
+
+      const selectedServer = this.servers.find(server => server.name === this.selectedServer);
+      const serverUrl = selectedServer?.url;
+      const serverID = selectedServer?.id_server;
+      const selectedConnection = this.filteredConnections.find(connection => connection.name === this.selectedConnection);
+      const connectionPort = selectedConnection?.port;
+      const connectionType = selectedConnection?.type;
+      const connectionID = selectedConnection?.id_connection;
+      const selectedDatabase = this.db.find(database => database.name === this.selectedDB);
+      const dbId = selectedDatabase?.id;
+
+      // Obtener usuario actual y proteger el acceso a su propiedad `name`.
+      const currentUser = this.authService.getUser();
+      let matchedUser: any = null;
+
+      if (currentUser && currentUser.name) {
+        console.log('👤 Usuario cargado. Nombre:', currentUser.name);
+        try {
+          const users = await lastValueFrom(this.apiService.getUsers());
+          const usersArray = Array.isArray(users) ? users : (users && Array.isArray(users.data) ? users.data : []);
+          matchedUser = usersArray.find((u: any) => u && u.name === currentUser.name) ?? null;
+        } catch (err) {
+          console.error('❌ Error obteniendo usuarios para emparejar:', err);
+        }
+      } else {
+        console.log('⚠️ No hay usuario autenticado. Cerrando sesión.');
+        this.authService.logout();
+        this.isSubmitting = false;
+        return;
+      }
+
+      const simulationDataBase: any = {
+        hostServer: serverUrl,
+        portConnection: connectionPort,
+        typeConnection: connectionType,
+        nameQueue: this.nombreCola,
+      };
+
+      const storeDataBase: any = {
+        id_connection: connectionID,
+        nameQueue: this.nombreCola || null,
+        id_db: dbId || null,
+      };
+
       // 🔹 SIMULACIÓN NUEVA
       if (this.showNuevoFields) {
         if (this.phoneNumbers.length === 0) {
@@ -688,14 +702,11 @@ export class TestingComponent implements OnInit {
             number: this.cantidad,
             shortCode: Number(this.sc),
             encoding: this.encoding,
-            // id_user: matchedUser ? matchedUser.id : null,
-            // description: `Simulación múltiple (${index + 1}) enviada en un solo lote.`,
           };
 
           allSimulations.push(simulationData);
         }
 
-        // 🔸 Crear payload unificado
         const batchPayload = {
           simulations: allSimulations,
           total: allSimulations.length,
@@ -715,10 +726,12 @@ export class TestingComponent implements OnInit {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
+          this.isSubmitting = false; // Resetear en caso de error
         }
 
-        this.resetForm();
-
+        // <-- PASAR formulario para resetear estados
+        this.resetForm(formulario);
+        this.isSubmitting = false; // Asegurar que se resetee después del resetForm
 
       // 🔹 SIMULACIÓN DE REUSO
       } else if (this.showReusoFields) {
@@ -767,10 +780,17 @@ export class TestingComponent implements OnInit {
         }
         console.log('📁 Colección actual:', this.collectionNames[0]);
 
+        // 🔸 Seleccionar registros aleatorios sin repetición
+        const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
+
+        // 🔹 Extraer systemID representativo del primer documento si no está definido
+        const firstDoc = selectedDocs[0] || null;
+        const representativeSystemID = this.systemId || firstDoc?.SystemID || firstDoc?.systemId || '';
+
         const storeData: any = {
           ...storeDataBase,
-          system_id: this.systemId,
-          password: this.password,
+          system_id: representativeSystemID,
+          password: this.password || firstDoc?.password || '',
           phone_number: 'N/A',
           message: 'N/A',
           number: this.cantidadReuso,
@@ -778,11 +798,6 @@ export class TestingComponent implements OnInit {
           encoding: 0,
           collection: collectionName,
         };
-
-        // console.log(String(this.selectedCollection));
-
-        // 🔸 Seleccionar registros aleatorios sin repetición
-        const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
 
         // 🔹 Crear todas las simulaciones dentro de un solo array JSON
         const allSimulations: any[] = selectedDocs.map((doc, i) => ({
@@ -798,11 +813,8 @@ export class TestingComponent implements OnInit {
           sarSegmentSeqNum: doc.SAR_SEGMENT_SEQNUM || 0,
           sarMsgRefNum: doc.SAR_MSG_REF_NUM || 0,
           sarTotalSegments: doc.SAR_TOTAL_SEGMENTS || 0,
-          // id_user: matchedUser ? matchedUser.id : null,
-          // description: `Simulación reuso - ${this.cantidadReuso} registros`,
         }));
 
-        // 🔸 Crear payload unificado
         const batchPayload = {
           simulations: allSimulations,
           total: allSimulations.length,
@@ -822,14 +834,19 @@ export class TestingComponent implements OnInit {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
+          this.isSubmitting = false; // Resetear en caso de error
         }
 
-        this.resetForm();
+        // <-- PASAR formulario para resetear estados
+        this.resetForm(formulario);
+        this.isSubmitting = false; // Asegurar que se resetee después del resetForm
       }
     } catch (error) {
       console.error('❌ Error general en el proceso:', error);
       this.showAlert('error', 'Error en el proceso de simulación');
+      this.isSubmitting = false; // Resetear en caso de error general
     } finally {
+      console.log('🔵 Bloque finally ejecutado - reseteando isSubmitting');
       this.isSubmitting = false;
       // auto ocultar dialog después de 2s
       setTimeout(() => {
@@ -837,6 +854,5 @@ export class TestingComponent implements OnInit {
         this.sendingLogs = [];
       }, 2000);
     }
-
   }
 }

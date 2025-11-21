@@ -72,6 +72,14 @@ class GoogleController extends Controller
                     'authorization_status' => $isSpecial ? 'authorized' : 'pending',
                     'role' => $isSpecial ? 'admin' : 'user', // 👈 agrega este campo si manejas roles
                 ]);
+
+                // 🚨 Notificar a los administradores si es pendiente
+                if (!$isSpecial) {
+                    $admins = User::where('role', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new \App\Notifications\NewAccessRequestNotification($user));
+                    }
+                }
             } else if ($isSpecial && $user->authorization_status !== 'authorized') {
                 // Si ya existe y es el especial, actualizar a autorizado
                 $user->authorization_status = 'authorized';
@@ -187,6 +195,9 @@ class GoogleController extends Controller
             $user = User::findOrFail($userId);
             $user->authorize();
 
+            // 🚀 Notificar al usuario
+            $user->notify(new \App\Notifications\AccessDecisionNotification($user, 'authorized'));
+
             Log::info('Usuario autorizado', [
                 'user_id' => $userId,
                 'user_email' => $user->email,
@@ -220,6 +231,9 @@ class GoogleController extends Controller
         try {
             $user = User::findOrFail($userId);
             $user->reject();
+
+            // 🚀 Notificar al usuario
+            $user->notify(new \App\Notifications\AccessDecisionNotification($user, 'rejected'));
 
             Log::info('Usuario rechazado', [
                 'user_id' => $userId,

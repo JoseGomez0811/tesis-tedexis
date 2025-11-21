@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule, NgForOf, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ApiService } from '../../services/api.service';
+import { SidenavService } from '../../services/sidenav.service';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-logs',
@@ -26,9 +28,13 @@ export class LogsComponent implements OnInit {
     accessLevel: '',
   };
 
+  isSideNavCollapsed = false;
+  private sidenavSubscription?: Subscription;
+
   constructor(
     private apiService: ApiService,
     private authService: AuthService,
+    private sidenavService: SidenavService,
     private router: Router
   ) {}
 
@@ -42,10 +48,38 @@ export class LogsComponent implements OnInit {
       };
     } else {
       this.authService.logout();
+      return;
     }
 
-    this.loadUsers();
-    this.loadLogs();
+    // Verificar que el token esté disponible antes de cargar datos
+    const token = this.authService.getToken();
+    if (!token) {
+      console.warn('⚠️ Token no disponible en LogsComponent, esperando...');
+      setTimeout(() => {
+        const retryToken = this.authService.getToken();
+        if (retryToken) {
+          this.loadUsers();
+          this.loadLogs();
+        } else {
+          console.error('❌ Token no disponible después de esperar');
+          this.authService.logout();
+        }
+      }, 200);
+    } else {
+      this.loadUsers();
+      this.loadLogs();
+    }
+
+    this.isSideNavCollapsed = this.sidenavService.getCollapsed();
+    this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
+      this.isSideNavCollapsed = collapsed;
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.sidenavSubscription) {
+      this.sidenavSubscription.unsubscribe();
+    }
   }
 
   /** 🔹 Cargar logs desde la API */

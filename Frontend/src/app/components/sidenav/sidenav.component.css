@@ -1,0 +1,32 @@
+.logout-button {
+  background-color: #E74C3C;
+}
+
+.logout-button:hover {
+  background-color: #D63031;
+}
+
+.nav-item {
+  background-color: rgba(23, 169, 224, 0);
+}
+
+.nav-item:hover {
+  background-color: rgba(23, 169, 224, 0.15);
+}
+
+.nav-item-active {
+  background-color: rgba(23, 169, 224, 0.2) !important;
+  font-weight: 600;
+}
+
+.nav-indicator {
+  opacity: 0;
+}
+
+.nav-item-active .nav-indicator {
+  opacity: 1;
+}
+
+body{
+  background-color: #F2F3F7;
+}
