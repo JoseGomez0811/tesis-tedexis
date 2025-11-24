@@ -29,6 +29,10 @@ export class AuthService {
   private readonly baseUrl = 'https://localhost';
   private tokenSubject = new BehaviorSubject<string | null>(this.getToken());
   public token$ = this.tokenSubject.asObservable();
+  private tokenExpirationHandled = false;
+  private sessionExpiredSubject = new BehaviorSubject<boolean>(false);
+  public sessionExpired$ = this.sessionExpiredSubject.asObservable();
+  private readonly sessionExpiredMessage = 'Tu sesión ha expirado. Si deseas continuar utilizando la plataforma, inicia sesión nuevamente.';
 
   constructor(
     private router: Router,
@@ -132,10 +136,32 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  logout(): void {
+  logout(redirect: boolean = true): void {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
     this.tokenSubject.next(null);
+    if (redirect) {
+      this.router.navigate(['/login']);
+    }
+  }
+
+  handleTokenExpiration(): void {
+    if (this.tokenExpirationHandled) {
+      return;
+    }
+
+    this.tokenExpirationHandled = true;
+    this.logout(false);
+    this.sessionExpiredSubject.next(true);
+  }
+
+  getSessionExpiredMessage(): string {
+    return this.sessionExpiredMessage;
+  }
+
+  confirmSessionExpiration(): void {
+    this.sessionExpiredSubject.next(false);
+    this.tokenExpirationHandled = false;
     this.router.navigate(['/login']);
   }
 

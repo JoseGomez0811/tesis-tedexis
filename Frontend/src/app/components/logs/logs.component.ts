@@ -111,26 +111,38 @@ export class LogsComponent implements OnInit {
       const selectedUser = this.userList.find(u => u.id === log.id_user);
       const matchUsuario = this.filtroUsuario ? selectedUser?.name === this.filtroUsuario : true;
 
+      const logDate = new Date(log.created_at);
+      const today = new Date();
+
       let matchFecha = true;
       if (this.filtroFecha === 'hoy') {
-        const hoy = new Date().toDateString();
-        matchFecha = new Date(log.created_at).toDateString() === hoy;
+        matchFecha = logDate.toDateString() === today.toDateString();
       } else if (this.filtroFecha === 'semana') {
-        const ahora = new Date();
-        const inicioSemana = new Date(ahora);
-        inicioSemana.setDate(ahora.getDate() - ahora.getDay());
-        matchFecha = new Date(log.created_at) >= inicioSemana;
+        const weekAgo = new Date();
+        weekAgo.setDate(today.getDate() - 7);
+        matchFecha = logDate >= weekAgo && logDate <= today;
       } else if (this.filtroFecha === 'mes') {
-        const ahora = new Date();
-        const fechaLog = new Date(log.created_at);
-        matchFecha = fechaLog.getMonth() === ahora.getMonth() && fechaLog.getFullYear() === ahora.getFullYear();
+        matchFecha = logDate.getMonth() === today.getMonth() && logDate.getFullYear() === today.getFullYear();
       } else if (this.filtroFecha === 'año') {
-        const ahora = new Date();
-        matchFecha = new Date(log.created_at).getFullYear() === ahora.getFullYear();
+        matchFecha = logDate.getFullYear() === today.getFullYear();
       } else if (this.filtroFecha === 'personalizada' && this.fechaEspecifica) {
-        const fechaLog = new Date(log.created_at).toDateString();
-        const fechaSel = new Date(this.fechaEspecifica).toDateString();
-        matchFecha = fechaLog === fechaSel;
+        // Parsear la fecha del input correctamente (viene en formato YYYY-MM-DD)
+        const [year, month, day] = this.fechaEspecifica.split('-').map(Number);
+        
+        // Crear fecha personalizada sin problemas de zona horaria
+        const customDateNormalized = new Date(year, month - 1, day);
+        
+        // Normalizar la fecha del log
+        const logDateNormalized = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+        
+        // Comparar timestamps
+        matchFecha = logDateNormalized.getTime() === customDateNormalized.getTime();
+        
+        // Debug
+        console.log('📅 Comparando fechas:');
+        console.log('  - Fecha personalizada:', customDateNormalized.toLocaleDateString());
+        console.log('  - Fecha log:', logDateNormalized.toLocaleDateString());
+        console.log('  - ¿Coinciden?:', matchFecha);
       }
 
       return matchUsuario && matchFecha;

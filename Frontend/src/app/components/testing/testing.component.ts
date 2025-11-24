@@ -247,10 +247,15 @@ export class TestingComponent implements OnInit, OnDestroy {
   }
 
   toggleFields(event: any) {
-    const value = event.target?.value ?? this.tipoSimulacion;
+    // Manejar correctamente valores null, string "null", o string vacío
+    const rawValue = event?.target?.value;
+    const value = rawValue === 'null' || rawValue === '' || rawValue === null || rawValue === undefined 
+      ? null 
+      : rawValue;
+    
+    this.tipoSimulacion = value;
     this.showNuevoFields = value === 'nuevo';
     this.showReusoFields = value === 'reuso';
-    this.tipoSimulacion = value;
   }
 
   onConnectionChange() {

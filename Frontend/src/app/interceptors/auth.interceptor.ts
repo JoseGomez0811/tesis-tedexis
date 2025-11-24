@@ -10,10 +10,14 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     // Leer el token de forma síncrona
@@ -106,19 +110,7 @@ export class AuthInterceptor implements HttpInterceptor {
             tokenPreview: localStorage.getItem('auth_token')?.substring(0, 30)
           });
           
-          // Solo cerrar sesión si realmente no hay token o si el error persiste
-          // No cerrar inmediatamente en el primer intento después del login
-          const currentToken = localStorage.getItem('auth_token');
-          if (!currentToken) {
-            console.log('🔓 Interceptor: No hay token, cerrando sesión');
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
-            this.router.navigate(['/login'], {
-              queryParams: { error: 'session_expired' }
-            });
-          } else {
-            console.warn('⚠️ Interceptor: Error 401 pero token existe, podría ser problema de timing');
-          }
+          this.authService.handleTokenExpiration();
         }
         
         if (error.status === 403) {
