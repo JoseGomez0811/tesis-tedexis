@@ -46,7 +46,11 @@ export class TestingComponent implements OnInit, OnDestroy {
   nombreCola: string | null = null;
   dbPassword: string | null = null;
   dbSystemID: string | null = null;
-  documentsCount = 0;
+  documentsCount: number | null = null;
+  
+  // Estados de carga
+  loadingCollections = false;
+  loadingDocuments = false;
 
   // Campos nuevo (permitir null)
   numeroTelefono: string | null = null;
@@ -199,6 +203,28 @@ export class TestingComponent implements OnInit, OnDestroy {
     this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
       this.isSideNavCollapsed = collapsed;
     });
+
+
+    //---------------------------------------------------------------------------------------------
+    // this.echo
+    // .channel('simulation-status')
+    // .listen('SimulationStatusEvent', (e: any) => {
+    //   const data = e.data;
+
+    //   if (data.success) {
+    //     this.showAlert(
+    //       'success',
+    //       `✅ ${data.protocol}: envío exitoso`
+    //     );
+    //   } else {
+    //     this.showAlert(
+    //       'error',
+    //       `❌ ${data.protocol}: error en el envío`
+    //     );
+    //   }
+    // });
+    //---------------------------------------------------------------------------------------------------
+
   }
 
   ngOnDestroy() {
@@ -272,17 +298,26 @@ export class TestingComponent implements OnInit, OnDestroy {
     const db = this.db.find(d => d.name === this.selectedDB);
     if (!db || !db.id) {
       this.collections = [];
+      this.loadingCollections = false;
+      this.selectedCollection = null;
+      this.documentsCount = null;
       return;
     }
+
+    this.loadingCollections = true;
+    this.selectedCollection = null;
+    this.documentsCount = null;
 
     this.apiService.getCollections(db.id).subscribe({
       next: (res: any) => {
         this.collections = Array.isArray(res) ? res : (res.collections ?? []);
+        this.loadingCollections = false;
         //this.collection = Array.isArray(res) ? res : res.data ?? [];
       },
       error: err => {
         console.error('Error cargando colecciones:', err);
         this.collections = [];
+        this.loadingCollections = false;
       }
     });
   }
@@ -296,21 +331,29 @@ export class TestingComponent implements OnInit, OnDestroy {
 
     if (!dbObj || !dbObj.id || !collectionName) {
       this.documents = [];
+      this.loadingDocuments = false;
+      this.documentsCount = null;
       return;
     }
+
+    this.loadingDocuments = true;
+    this.documentsCount = null;
 
     this.apiService.getCollectionData(dbObj.id, collectionName).subscribe({
       next: (res: any) => {
         //this.documents = Array.isArray(res) ? res : res.data ?? [];
         this.documents = Array.isArray(res) ? res : (res.data ?? []);
         this.selectedDocument = null;
-        this.documentsCount = this.documents.length
-
+        // Usar totalCount si está disponible, sino usar el conteo de documentos devueltos como fallback
+        this.documentsCount = res.totalCount !== undefined ? res.totalCount : (this.documents.length || 0);
+        this.loadingDocuments = false;
       },
       error: err => {
         console.error('Error cargando documentos:', err);
         this.documents = [];
         this.selectedDocument = null;
+        this.documentsCount = null;
+        this.loadingDocuments = false;
       }
     });
   }
@@ -418,6 +461,8 @@ export class TestingComponent implements OnInit, OnDestroy {
     this.selectedConnection = null;
     this.selectedDB = null;
     this.selectedCollection = null;
+    this.collections = [];
+    this.documents = [];
     this.tipoConexion = null;
     this.tipoSimulacion = null;
     this.showQueueField = false;
@@ -434,10 +479,12 @@ export class TestingComponent implements OnInit, OnDestroy {
     this.encoding = null;
     this.baseDeDatos = null;
     this.cantidadReuso = null;
-    this.documentsCount = 0;
+    this.documentsCount = null;
     this.showNuevoFields = false;
     this.showReusoFields = false;
     this.mensajeMaxLength = null;
+    this.loadingCollections = false;
+    this.loadingDocuments = false;
     // NOTA: isSubmitting se controla desde onSubmit / finally, NO lo reseteamos aquí por seguridad
   }
 
@@ -521,6 +568,16 @@ export class TestingComponent implements OnInit, OnDestroy {
         this.isSubmitting = false;
         return;
       }
+
+      // Validar formato del nombre de la cola: solo letras, números y underscore, sin espacios
+      if (this.showQueueField && normalizedQueueName.length > 0) {
+        const queueNameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!queueNameRegex.test(normalizedQueueName)) {
+          this.showAlert('error', 'El nombre de la cola solo puede contener letras, números y guion bajo (_). No se permiten espacios ni otros caracteres especiales.');
+          this.isSubmitting = false;
+          return;
+        }
+      }
       this.nombreCola = this.showQueueField ? normalizedQueueName : null;
 
       if (!this.tipoSimulacion) {
@@ -547,30 +604,36 @@ export class TestingComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Número de teléfono
+        // Número de teléfono - validar múltiples números separados por coma
+        if (!this.numeroTelefono || this.numeroTelefono.trim() === '') {
+          this.showAlert('error', 'Ingresa al menos un número de teléfono válido.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        // Procesar números separados por coma y validar cada uno
+        const phoneNumbers = this.numeroTelefono
+          .split(',')
+          .map(num => num.trim())
+          .filter(num => num !== '');
+
+        if (phoneNumbers.length === 0) {
+          this.showAlert('error', 'Ingresa al menos un número de teléfono válido.');
+          this.isSubmitting = false;
+          return;
+        }
+
         const phoneRegex = /^[0-9]{10,15}$/;
-        if (!this.numeroTelefono || !phoneRegex.test(this.numeroTelefono)) {
-          this.showAlert('error', 'Ingresa un número válido en formato internacional (58412...).');
+        const invalidNumbers = phoneNumbers.filter(num => !phoneRegex.test(num));
+        
+        if (invalidNumbers.length > 0) {
+          this.showAlert('error', `Los siguientes números no son válidos: ${invalidNumbers.join(', ')}. Deben tener entre 10 y 15 dígitos.`);
           this.isSubmitting = false;
           return;
         }
 
         if (!this.mensaje || this.mensaje.trim().length === 0) {
           this.showAlert('error', 'El mensaje es obligatorio.');
-          this.isSubmitting = false;
-          return;
-        }
-
-        const encodingValue = Number(this.encoding);
-
-        if (encodingValue === 3 && (this.mensaje?.length ?? 0) > 160) {
-          this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
-          this.isSubmitting = false;
-          return;
-        }
-
-        if (encodingValue === 8 && (this.mensaje?.length ?? 0) > 170) {
-          this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
           this.isSubmitting = false;
           return;
         }
@@ -752,7 +815,7 @@ export class TestingComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Cargar todos los documentos de la colección seleccionada
+        // Cargar documentos aleatorios de la colección seleccionada usando $sample de MongoDB
         const dbObj = this.db.find(d => d.name === this.selectedDB);
         const collectionName = this.selectedCollection;
 
@@ -764,7 +827,8 @@ export class TestingComponent implements OnInit, OnDestroy {
 
         let allDocuments: any[] = [];
         try {
-          const res = await lastValueFrom(this.apiService.getCollectionData(dbObj.id, collectionName));
+          // Usar el parámetro sample para obtener documentos aleatorios directamente desde MongoDB
+          const res = await lastValueFrom(this.apiService.getCollectionData(dbObj.id, collectionName, false, this.cantidadReuso));
           allDocuments = Array.isArray(res) ? res : (res.data ?? []);
         } catch (err) {
           console.error('❌ Error obteniendo los documentos:', err);
@@ -785,8 +849,8 @@ export class TestingComponent implements OnInit, OnDestroy {
         }
         console.log('📁 Colección actual:', this.collectionNames[0]);
 
-        // 🔸 Seleccionar registros aleatorios sin repetición
-        const selectedDocs = this.getRandomDocuments(allDocuments, this.cantidadReuso);
+        // Los documentos ya vienen aleatorios desde MongoDB usando $sample
+        const selectedDocs = allDocuments;
 
         // 🔹 Extraer systemID representativo del primer documento si no está definido
         const firstDoc = selectedDocs[0] || null;

@@ -7,7 +7,7 @@ return [
 
     'guard' => ['web'],
 
-    'expiration' => env('SANCTUM_EXPIRATION', 2),
+    'expiration' => env('SANCTUM_EXPIRATION', 120),
 
     'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'TEDEXIS_'),
 

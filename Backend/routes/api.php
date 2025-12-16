@@ -43,6 +43,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/get_simulation', [SendSimulationController::class, 'index']);
     Route::post('/store_data', [SendSimulationController::class, 'store']);
     Route::post('/send_data', [SendSimulationController::class, 'send']);
+    //--------------------------------------------------------------------------------------------------------------------------------------
+    Route::post('/simulation-status', [SendSimulationController::class, 'simulationStatus']);
+    //-------------------------------------------------------------------------------------------------------------------------------------
 
     // --- LOGS ---
     Route::get('logs', [LogsController::class, 'index']);

@@ -76,13 +76,50 @@ try {
     // GET /collection/<nombre> → muestra documentos
     if ($segments[0] === 'collection' && isset($segments[1]) && !isset($segments[2])) {
         $collectionName = $segments[1];
-        $query = new MongoDB\Driver\Query([], ['limit' => 50]);
-        $cursor = $manager->executeQuery("{$name_db}.{$collectionName}", $query);
-        $data = [];
-        foreach ($cursor as $d) {
-            $data[] = json_decode(json_encode($d), true);
+        
+        // Obtener el conteo total de documentos en la colección
+        $countCommand = new MongoDB\Driver\Command(['count' => $collectionName]);
+        $countResult = $manager->executeCommand($name_db, $countCommand);
+        $totalCount = 0;
+        foreach ($countResult as $result) {
+            $totalCount = $result->n;
+            break;
         }
-        echo json_encode(['count' => count($data), 'data' => $data]);
+        
+        // Verificar si se solicita una muestra aleatoria (para reuso) o un límite específico
+        $sampleSize = isset($_GET['sample']) ? (int)$_GET['sample'] : 0;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+        
+        $data = [];
+        
+        if ($sampleSize > 0) {
+            // Usar $sample de MongoDB para obtener documentos aleatorios (más eficiente)
+            $pipeline = [
+                ['$sample' => ['size' => min($sampleSize, $totalCount)]]
+            ];
+            $command = new MongoDB\Driver\Command([
+                'aggregate' => $collectionName,
+                'pipeline' => $pipeline,
+                'cursor' => new stdClass()
+            ]);
+            $cursor = $manager->executeCommand($name_db, $command);
+            foreach ($cursor as $d) {
+                $data[] = json_decode(json_encode($d), true);
+            }
+        } else {
+            // Obtener documentos normales con límite
+            $query = new MongoDB\Driver\Query([], ['limit' => $limit]);
+            $cursor = $manager->executeQuery("{$name_db}.{$collectionName}", $query);
+            foreach ($cursor as $d) {
+                $data[] = json_decode(json_encode($d), true);
+            }
+        }
+        
+        echo json_encode([
+            'count' => count($data), 
+            'totalCount' => $totalCount,
+            'data' => $data
+        ]);
         exit;
     }
 

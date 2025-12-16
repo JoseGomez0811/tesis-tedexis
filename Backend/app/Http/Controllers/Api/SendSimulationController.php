@@ -183,4 +183,41 @@ class SendSimulationController extends Controller
             ], 500);
         }
     }
+
+    //------------------------------------------------------------------------------------------------------------------------
+    public function simulationStatus(Request $request)
+    {
+        $data = $request->validate([
+            'protocol' => 'required|string',
+            'success' => 'required|boolean',
+            'message' => 'required|string',
+            'timestamp' => 'required|numeric',
+        ]);
+
+        // (Opcional) guardar log
+        try {
+            Logs::create([
+                'id_user' => 1, // Usuario del sistema
+                'id_server' => null,
+                'id_connection' => null,
+                'id_db' => null,
+                'id_simulation' => null,
+                'description' => sprintf(
+                    'Simulation Status - Protocol: %s, Success: %s, Message: %s',
+                    $data['protocol'],
+                    $data['success'] ? 'Yes' : 'No',
+                    $data['message']
+                ),
+            ]);
+        } catch (\Exception $e) {
+            // No fallar si el log no se puede guardar
+        }
+
+        // Emitir evento para frontend
+        broadcast(new \App\Events\SimulationStatusEvent($data))->toOthers();
+
+        return response()->json(['ok' => true]);
+    }
+    //------------------------------------------------------------------------------------------------------------------------------
+
 }

@@ -114,11 +114,11 @@
                 name="nombreCola"
                 required
                 #nombreColaModel="ngModel"
-                placeholder="Nombre de la cola"
+                placeholder="Ej: mi_cola_123 (solo letras, números y _)"
                 class="w-full md:w-3/4 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
               />
               <div *ngIf="nombreColaModel.invalid && nombreColaModel.touched" class="text-red-600 text-sm mt-2">
-                ⚠️ Debes ingresar el nombre de la cola.
+                ⚠️ Debes ingresar el nombre de la cola (solo letras, números y guion bajo, sin espacios).
               </div>
             </div>
 
@@ -238,11 +238,11 @@
                 name="numeroTelefonoNuevo"
                 required
                 #numeroTelefonoNuevo="ngModel"
-                placeholder="Ej: 584121234567"
+                placeholder="Ej: 584121234567 o 584121234567,584129876543"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
               />
               <div *ngIf="numeroTelefonoNuevo.invalid && numeroTelefonoNuevo.touched" class="text-red-600 text-sm mt-2">
-                ⚠️ Ingresa un número válido en formato internacional (58412...).
+                ⚠️ Ingresa al menos un número válido en formato internacional (58412...). Puedes ingresar varios números separados por coma.
               </div>
             </div>
 
@@ -253,13 +253,17 @@
                 [(ngModel)]="mensaje"
                 name="mensajeNuevo"
                 required
-                [attr.maxlength]="mensajeMaxLength"
                 #mensajeNuevo="ngModel"
                 placeholder="Mensaje de prueba"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
               />
-              <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm mt-2">
-                ⚠️ Ingresa un mensaje (máx. {{ mensajeMaxLength || '∞' }} caracteres).
+              <div class="flex justify-between items-center mt-1">
+                <div *ngIf="mensajeNuevo.invalid && mensajeNuevo.touched" class="text-red-600 text-sm">
+                  ⚠️ Ingresa un mensaje.
+                </div>
+                <div class="text-sm text-gray-500 ml-auto">
+                  {{ (mensaje?.length || 0) }} caracteres
+                </div>
               </div>
             </div>
 
@@ -307,7 +311,10 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Colección</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                Colección
+                <div *ngIf="loadingCollections" class="w-4 h-4 border-2 border-[#17A9E0] border-t-transparent rounded-full animate-spin"></div>
+              </label>
               <select
                 [(ngModel)]="selectedCollection"
                 name="collection"
@@ -315,7 +322,8 @@
                 #collection="ngModel"
                 id="collection"
                 (change)="onCollectionChange()"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+                [disabled]="loadingCollections"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option [value]="null">Seleccionar...</option>
                 <option *ngFor="let c of collections" [value]="c">{{ c }}</option>
@@ -326,10 +334,11 @@
             </div>
           </div>
 
-          <div *ngIf="documentsCount !== null" class="mb-6 p-3 bg-blue-50 rounded-lg border border-[#17A9E0]">
-            <p class="text-sm text-gray-700">
-              <span class="font-semibold text-[#214F90]">Total de documentos:</span>
-              <span class="font-bold text-[#17A9E0]">{{ documentsCount }}</span>
+          <div *ngIf="documentsCount !== null || loadingDocuments" class="mb-6 p-3 bg-blue-50 rounded-lg border border-[#17A9E0]">
+            <p class="text-sm text-gray-700 flex items-center gap-2">
+              <span class="font-semibold text-[#214F90]">Total de documentos: </span>
+              <span *ngIf="loadingDocuments" class="w-4 h-4 border-2 border-[#17A9E0] border-t-transparent rounded-full animate-spin"></span>
+              <span *ngIf="!loadingDocuments && documentsCount !== null" class="font-bold text-[#17A9E0]">{{ documentsCount }}</span>
             </p>
           </div>
 
@@ -342,7 +351,8 @@
                 [(ngModel)]="systemId"
                 type="text"
                 placeholder="100"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+                [disabled]="loadingDocuments || documentsCount === null"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -354,7 +364,8 @@
                 [(ngModel)]="password"
                 type="password"
                 placeholder="••••••"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+                [disabled]="loadingDocuments || documentsCount === null"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -369,7 +380,8 @@
                 min="1"
                 #cantidadR="ngModel"
                 placeholder="100"
-                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all"
+                [disabled]="loadingDocuments || documentsCount === null"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#17A9E0] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
               <div *ngIf="cantidadR.invalid && cantidadR.touched" class="text-red-600 text-sm mt-2">
                 ⚠️ La cantidad debe ser mayor a 0.

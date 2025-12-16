@@ -2,8 +2,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, throwError, timer } from 'rxjs';
-import { tap, catchError, switchMap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, throwError, timer, of } from 'rxjs';
+import { tap, catchError, switchMap, finalize, shareReplay } from 'rxjs/operators';
 
 export interface User {
   id: number;
@@ -33,11 +33,55 @@ export class AuthService {
   private sessionExpiredSubject = new BehaviorSubject<boolean>(false);
   public sessionExpired$ = this.sessionExpiredSubject.asObservable();
   private readonly sessionExpiredMessage = 'Tu sesión ha expirado. Si deseas continuar utilizando la plataforma, inicia sesión nuevamente.';
+  private cache = new Map<string, { timestamp: number; data: any }>();
+  private cacheTTL = 60 * 1000;
+  private inFlightRequests = new Map<string, Observable<any>>();
 
   constructor(
     private router: Router,
     private http: HttpClient
   ) {}
+  private getCache<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+
+    if (Date.now() - cached.timestamp > this.cacheTTL) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.data as T;
+  }
+
+  private setCache(key: string, data: any): void {
+    this.cache.set(key, { timestamp: Date.now(), data });
+  }
+
+  private invalidateCache(keys: string | string[]): void {
+    const list = Array.isArray(keys) ? keys : [keys];
+    list.forEach(key => this.cache.delete(key));
+  }
+
+  private createRequestKey(method: string, url: string, payload?: any): string {
+    const payloadKey = payload ? JSON.stringify(payload) : '';
+    return `${method}:${url}:${payloadKey}`;
+  }
+
+  private runWithInflightControl<T>(key: string, factory: () => Observable<T>): Observable<T> {
+    const existing = this.inFlightRequests.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const request$ = factory().pipe(
+      finalize(() => this.inFlightRequests.delete(key)),
+      shareReplay(1)
+    );
+
+    this.inFlightRequests.set(key, request$);
+    return request$;
+  }
+
 
   private httpOptionsWithCredentials = {
     withCredentials: true
@@ -186,9 +230,15 @@ export class AuthService {
 
   // === ADMIN API ===
   getAllUsers(): Observable<ApiResponse<User[]>> {
-    return this.http.get<ApiResponse<User[]>>(
-      `${this.baseUrl}/api/admin/users/all`
-    ).pipe(
+    const cacheKey = 'admin_all_users';
+    const cached = this.getCache<ApiResponse<User[]>>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const url = `${this.baseUrl}/api/admin/users/all`;
+    return this.http.get<ApiResponse<User[]>>(url).pipe(
+      tap(res => this.setCache(cacheKey, res)),
       catchError(error => {
         console.error('Error obteniendo usuarios:', error.status);
         return throwError(() => error);
@@ -197,9 +247,15 @@ export class AuthService {
   }
 
   getPendingUsers(): Observable<ApiResponse<User[]>> {
-    return this.http.get<ApiResponse<User[]>>(
-      `${this.baseUrl}/api/admin/users/pending`
-    ).pipe(
+    const cacheKey = 'admin_pending_users';
+    const cached = this.getCache<ApiResponse<User[]>>(cacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const url = `${this.baseUrl}/api/admin/users/pending`;
+    return this.http.get<ApiResponse<User[]>>(url).pipe(
+      tap(res => this.setCache(cacheKey, res)),
       catchError(error => throwError(() => error))
     );
   }
@@ -208,7 +264,11 @@ export class AuthService {
   authorizeUser(userId: number): Observable<ApiResponse<User>> {
     console.log('🚀 Iniciando autorización de usuario:', userId);
     
-    return this.getCsrfCookie().pipe(
+    const url = `${this.baseUrl}/api/admin/users/${userId}/authorize`;
+    const key = this.createRequestKey('POST', url, { userId });
+
+    return this.runWithInflightControl(key, () =>
+      this.getCsrfCookie().pipe(
       switchMap(() => {
         console.log('✅ Cookie CSRF obtenida, esperando establecimiento...');
         // Pequeño delay para asegurar que la cookie se estableció
@@ -254,10 +314,10 @@ export class AuthService {
           console.error('❌ No se encontró token de autenticación');
         }
 
-        console.log('📤 Enviando petición POST a:', `${this.baseUrl}/api/admin/users/${userId}/authorize`);
+        console.log('📤 Enviando petición POST a:', url);
 
         return this.http.post<ApiResponse<User>>(
-          `${this.baseUrl}/api/admin/users/${userId}/authorize`,
+          url,
           {},
           {
             withCredentials: true,
@@ -275,8 +335,9 @@ export class AuthService {
           console.error('Cookies actuales:', document.cookie);
         }
         return throwError(() => error);
-      })
-    );
+      }),
+      tap(() => this.invalidateCache(['admin_all_users', 'admin_pending_users']))
+    ));
   }
 
   // Añadir este método para obtener el CSRF token de las cookies
@@ -315,7 +376,11 @@ export class AuthService {
 
   // Actualizar también los otros métodos admin de la misma manera
   rejectUser(userId: number): Observable<ApiResponse<User>> {
-    return this.getCsrfCookie().pipe(
+    const url = `${this.baseUrl}/api/admin/users/${userId}/reject`;
+    const key = this.createRequestKey('POST', url, { userId });
+
+    return this.runWithInflightControl(key, () =>
+      this.getCsrfCookie().pipe(
       switchMap(() => timer(200)),
       switchMap(() => {
         const csrfToken = this.getCsrfTokenFromCookie();
@@ -337,7 +402,7 @@ export class AuthService {
         }
 
         return this.http.post<ApiResponse<User>>(
-          `${this.baseUrl}/api/admin/users/${userId}/reject`,
+          url,
           {},
           {
             withCredentials: true,
@@ -345,13 +410,18 @@ export class AuthService {
           }
         );
       }),
-      catchError(error => throwError(() => error))
-    );
+      catchError(error => throwError(() => error)),
+      tap(() => this.invalidateCache(['admin_all_users', 'admin_pending_users']))
+    ));
   }
 
   // Aplicar el mismo patrón a makeAdmin y removeAdmin
   makeAdmin(userId: number): Observable<ApiResponse<User>> {
-    return this.getCsrfCookie().pipe(
+    const url = `${this.baseUrl}/api/admin/users/${userId}/make-admin`;
+    const key = this.createRequestKey('POST', url, { userId });
+
+    return this.runWithInflightControl(key, () =>
+      this.getCsrfCookie().pipe(
       switchMap(() => timer(200)),
       switchMap(() => {
         const csrfToken = this.getCsrfTokenFromCookie();
@@ -373,7 +443,7 @@ export class AuthService {
         }
 
         return this.http.post<ApiResponse<User>>(
-          `${this.baseUrl}/api/admin/users/${userId}/make-admin`,
+          url,
           {},
           {
             withCredentials: true,
@@ -381,12 +451,17 @@ export class AuthService {
           }
         );
       }),
-      catchError(error => throwError(() => error))
-    );
+      catchError(error => throwError(() => error)),
+      tap(() => this.invalidateCache(['admin_all_users', 'admin_pending_users']))
+    ));
   }
 
   removeAdmin(userId: number): Observable<ApiResponse<User>> {
-    return this.getCsrfCookie().pipe(
+    const url = `${this.baseUrl}/api/admin/users/${userId}/remove-admin`;
+    const key = this.createRequestKey('POST', url, { userId });
+
+    return this.runWithInflightControl(key, () =>
+      this.getCsrfCookie().pipe(
       switchMap(() => timer(200)),
       switchMap(() => {
         const csrfToken = this.getCsrfTokenFromCookie();
@@ -408,7 +483,7 @@ export class AuthService {
         }
 
         return this.http.post<ApiResponse<User>>(
-          `${this.baseUrl}/api/admin/users/${userId}/remove-admin`,
+          url,
           {},
           {
             withCredentials: true,
@@ -416,7 +491,8 @@ export class AuthService {
           }
         );
       }),
-      catchError(error => throwError(() => error))
-    );
+      catchError(error => throwError(() => error)),
+      tap(() => this.invalidateCache(['admin_all_users', 'admin_pending_users']))
+    ));
   }
 }

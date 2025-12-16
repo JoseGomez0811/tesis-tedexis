@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\DatabaseConnection;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Request;
 
 class CollectionsDBController extends Controller
 {
@@ -85,21 +86,33 @@ class CollectionsDBController extends Controller
     /**
      * 🔹 Obtener los primeros documentos de una colección específica.
      */
-    public function getCollectionData($id, $collection)
+    public function getCollectionData($id, $collection, Request $request)
     {
         try {
             Log::info("📄 [MongoBridge] Solicitando documentos de la colección '{$collection}' (DB ID={$id})");
 
             $dbConnection = DatabaseConnection::findOrFail($id);
 
-            $query = http_build_query([
+            $queryParams = [
                 'host' => $dbConnection->host,
                 'port' => $dbConnection->port,
                 'user' => $dbConnection->user,
                 'pass' => $dbConnection->password,
                 'auth_db' => $dbConnection->auth_db,
                 'name_db' => $dbConnection->name_db,
-            ]);
+            ];
+
+            // Agregar parámetro sample si está presente en la request
+            if ($request->has('sample')) {
+                $queryParams['sample'] = $request->input('sample');
+            }
+
+            // Agregar parámetro limit si está presente en la request
+            if ($request->has('limit')) {
+                $queryParams['limit'] = $request->input('limit');
+            }
+
+            $query = http_build_query($queryParams);
 
             $url = "{$this->mongoBridgeBaseUrl}/collection/{$collection}?$query";
             Log::info("➡️ Enviando solicitud a MongoBridge: {$url}");
