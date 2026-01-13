@@ -97,8 +97,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   closeSendingDialog() {
-    this.showSendingDialog = false;
-    this.sendingLogs = [];
+    if (!this.isSubmitting) {
+      this.showSendingDialog = false;
+      this.sendingLogs = [];
+    }
   }
 
   // Método mejorado para cerrar el dialog y mostrar alerta
@@ -127,6 +129,53 @@ export class ProfileComponent implements OnInit, OnDestroy {
   get sendingLogsCountText(): string {
     // ejemplo: "3 logs"
     return `${this.sendingLogs.length} mensajes`;
+  }
+
+  /**
+   * Consulta periódicamente al backend para saber si el Web Service
+   * terminó de enviar los datos a los servidores.
+   */
+  private async waitForSimulationStatus(requestId: string): Promise<{ ok: boolean; message: string }> {
+    const maxAttempts = 30;       // ~60 segundos (30 * 2s)
+    const delayMs = 2000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res: any = await lastValueFrom(this.apiService.checkSimulationStatus(requestId));
+
+        if (res && res.exists && res.data) {
+          const data = res.data;
+
+          // Si ya llegó la respuesta final del Web Service (stage 2)
+          if (data.stage === 2 || data.status === 'completed' || data.status === 'failed') {
+            const isSuccess = data.status === 'completed';
+            const baseMessage = data.message || (isSuccess
+              ? 'Los datos se enviaron correctamente a los servidores.'
+              : 'Hubo un problema enviando los datos a los servidores.');
+
+            this.addLog(isSuccess
+              ? `✅ Simulación completada en el Web Service: ${baseMessage}`
+              : `❌ El Web Service reportó un error: ${baseMessage}`
+            );
+
+            if (!isSuccess && Array.isArray(data.error_details) && data.error_details.length > 0) {
+              this.addLog(`❌ Detalles: ${data.error_details.join(' | ')}`);
+            }
+
+            return { ok: isSuccess, message: baseMessage };
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error consultando estado de simulación:', err);
+      }
+
+      // Esperar antes del siguiente intento
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    const timeoutMessage = 'No se recibió respuesta final del Web Service dentro del tiempo esperado.';
+    this.addLog(`❌ ${timeoutMessage}`);
+    return { ok: false, message: timeoutMessage };
   }
 
   ngOnInit(): void {
@@ -506,22 +555,37 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
-          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
-          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
-          const successMessage = (res && (res.message || res.msg)) ? (res.message || res.msg) : `Se enviaron ${allSimulations.length} simulaciones.`;
-          // this.showAlert('success', `✅ ${successMessage}`);
-          console.log('✅ Respuesta del backend:', res);
+          const res: any = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+
+          // ✅ Respuesta inmediata del Web Service (stage 1)
+          const wsResponse = res?.webservice;
+          const initialMessage = wsResponse?.message || 'Datos recibidos por el Web Service.';
+
+          this.addLog(`✅ Web Service recibió los datos: ${initialMessage}`);
+          this.addLog('🔎 Verificando estado de la simulación...');
+
+          const requestId: string | undefined = res?.requestId;
+          let finalStatus = { ok: true, message: 'Simulación enviada correctamente.' };
+
+          // Si tenemos un ID de correlación, esperar la respuesta final (stage 2)
+          if (requestId) {
+            finalStatus = await this.waitForSimulationStatus(requestId);
+          }
 
           // Registrar log (usar id_simulation si está disponible)
           const id_simulation = this.selectedSimulation.id_simulation ?? null;
           
           this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, id_simulation);
-          await this.closeDialogAndShowAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones.`);
+
+          if (finalStatus.ok) {
+            await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
+          } else {
+            await this.closeDialogAndShowAlert('error', `❌ ${finalStatus.message}`);
+          }
         } catch (error) {
           console.error('❌ Error enviando simulaciones (nuevo):', error);
           this.addLog(`❌ Error: ${error}`);
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
-          // this.showAlert('error', '❌ Error enviando simulaciones.');
         }
 
       } else {
@@ -572,22 +636,37 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
-          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
-          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
-          const successMessage = (res && (res.message || res.msg)) ? (res.message || res.msg) : `Se enviaron ${allSimulations.length} simulaciones.`;
-          // this.showAlert('success', `✅ ${successMessage}`);
-          console.log('✅ Respuesta del backend:', res);
+          const res: any = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+
+          // ✅ Respuesta inmediata del Web Service (stage 1)
+          const wsResponse = res?.webservice;
+          const initialMessage = wsResponse?.message || 'Datos recibidos por el Web Service.';
+
+          this.addLog(`✅ Web Service recibió los datos: ${initialMessage}`);
+          this.addLog('🔎 Verificando estado de la simulación...');
+
+          const requestId: string | undefined = res?.requestId;
+          let finalStatus = { ok: true, message: 'Simulación enviada correctamente.' };
+
+          // Si tenemos un ID de correlación, esperar la respuesta final (stage 2)
+          if (requestId) {
+            finalStatus = await this.waitForSimulationStatus(requestId);
+          }
 
           // Registrar log (usar id_simulation si está disponible)
           const id_simulation = this.selectedSimulation.id_simulation ?? null;
           
           this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.`, id_simulation);
-          await this.closeDialogAndShowAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones.`);
+
+          if (finalStatus.ok) {
+            await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
+          } else {
+            await this.closeDialogAndShowAlert('error', `❌ ${finalStatus.message}`);
+          }
         } catch (err) {
           console.error('❌ Error enviando simulaciones (reuso):', err);
           this.addLog(`❌ Error: ${err}`);
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
-          
         }
       }
 

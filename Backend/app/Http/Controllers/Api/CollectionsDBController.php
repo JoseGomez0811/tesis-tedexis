@@ -15,7 +15,7 @@ class CollectionsDBController extends Controller
 
     public function __construct()
     {
-        $this->mongoBridgeBaseUrl = env('MONGO_BRIDGE_URL', 'https://tedexis_mongo_bridge:8081');
+        $this->mongoBridgeBaseUrl = env('MONGO_BRIDGE_URL', 'http://tedexis_mongo_bridge:8081');
     }
 
     /**

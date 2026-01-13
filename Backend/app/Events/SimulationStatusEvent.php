@@ -1,7 +1,5 @@
 <?php
 
-//ARCHIVO NUEVO
-
 namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
@@ -21,13 +19,19 @@ class SimulationStatusEvent implements ShouldBroadcast
         $this->data = $data;
     }
 
+    /**
+     * Canal donde se emitirá el evento
+     */
     public function broadcastOn(): Channel
     {
         return new Channel('simulation-status');
     }
 
+    /**
+     * Nombre del evento (explícito para frontend)
+     */
     public function broadcastAs(): string
     {
-        return 'SimulationStatusEvent';
+        return 'simulation.status';
     }
 }

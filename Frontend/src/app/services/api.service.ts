@@ -347,4 +347,13 @@ getDocument(dbId: string, collection: string, docId: string, forceRefresh = fals
     );
   }
 
+  // Agregar este método a tu api.service.ts existente
+
+  /**
+   * Verifica el estado de una simulación por su RequestID
+   */
+  checkSimulationStatus(requestId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/check-simulation-status`, { requestId });
+  }
+
 }

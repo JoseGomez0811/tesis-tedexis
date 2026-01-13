@@ -94,7 +94,7 @@ class GoogleController extends Controller
 
             // Usuario autorizado: login y redirigir
             Auth::login($user);
-            $token = $user->createToken('google-login', ['*'], now()->addMinutes(15))->plainTextToken;
+            $token = $user->createToken('google-login', ['*'], now()->addMinutes(120))->plainTextToken;
 
             // Log::info('Token generado', [
             //     'user_id' => $user->id,
@@ -127,8 +127,10 @@ class GoogleController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
+            // 🔹 Evitar headers demasiado grandes en el redirect (Nginx: "upstream sent too big header")
+            //    Solo enviamos un código de error genérico y dejamos el detalle en los logs.
             return redirect(
-                config('app.frontend_url') . '/login?error=auth_failed&details=' . urlencode($e->getMessage())
+                config('app.frontend_url') . '/login?error=auth_failed'
             );
         }
     }

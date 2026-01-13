@@ -169,6 +169,53 @@ export class TestingComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Consulta periódicamente al backend para saber si el Web Service
+   * terminó de enviar los datos a los servidores.
+   */
+  private async waitForSimulationStatus(requestId: string): Promise<{ ok: boolean; message: string }> {
+    const maxAttempts = 30;       // ~60 segundos (30 * 2s)
+    const delayMs = 2000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const res: any = await lastValueFrom(this.apiService.checkSimulationStatus(requestId));
+
+        if (res && res.exists && res.data) {
+          const data = res.data;
+
+          // Si ya llegó la respuesta final del Web Service (stage 2)
+          if (data.stage === 2 || data.status === 'completed' || data.status === 'failed') {
+            const isSuccess = data.status === 'completed';
+            const baseMessage = data.message || (isSuccess
+              ? 'Los datos se enviaron correctamente a los servidores.'
+              : 'Hubo un problema enviando los datos a los servidores.');
+
+            this.addLog(isSuccess
+              ? `✅ Simulación completada en el Web Service: ${baseMessage}`
+              : `❌ El Web Service reportó un error: ${baseMessage}`
+            );
+
+            if (!isSuccess && Array.isArray(data.error_details) && data.error_details.length > 0) {
+              this.addLog(`❌ Detalles: ${data.error_details.join(' | ')}`);
+            }
+
+            return { ok: isSuccess, message: baseMessage };
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error consultando estado de simulación:', err);
+      }
+
+      // Esperar antes del siguiente intento
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    const timeoutMessage = 'No se recibió respuesta final del Web Service dentro del tiempo esperado.';
+    this.addLog(`❌ ${timeoutMessage}`);
+    return { ok: false, message: timeoutMessage };
+  }
+
   // Getter para mostrar contador simple (puedes personalizar)
   get sendingLogsCountText(): string {
     // ejemplo: "3 logs"
@@ -203,28 +250,6 @@ export class TestingComponent implements OnInit, OnDestroy {
     this.sidenavSubscription = this.sidenavService.isCollapsed$.subscribe(collapsed => {
       this.isSideNavCollapsed = collapsed;
     });
-
-
-    //---------------------------------------------------------------------------------------------
-    // this.echo
-    // .channel('simulation-status')
-    // .listen('SimulationStatusEvent', (e: any) => {
-    //   const data = e.data;
-
-    //   if (data.success) {
-    //     this.showAlert(
-    //       'success',
-    //       `✅ ${data.protocol}: envío exitoso`
-    //     );
-    //   } else {
-    //     this.showAlert(
-    //       'error',
-    //       `❌ ${data.protocol}: error en el envío`
-    //     );
-    //   }
-    // });
-    //---------------------------------------------------------------------------------------------------
-
   }
 
   ngOnDestroy() {
@@ -318,6 +343,7 @@ export class TestingComponent implements OnInit, OnDestroy {
         console.error('Error cargando colecciones:', err);
         this.collections = [];
         this.loadingCollections = false;
+        this.showAlert('error', 'Error al cargar las colecciones. Por favor, verifica la conexión a la base de datos.');
       }
     });
   }
@@ -354,6 +380,7 @@ export class TestingComponent implements OnInit, OnDestroy {
         this.selectedDocument = null;
         this.documentsCount = null;
         this.loadingDocuments = false;
+        this.showAlert('error', 'Error al cargar los documentos. Por favor, verifica la conexión a la base de datos.');
       }
     });
   }
@@ -638,6 +665,20 @@ export class TestingComponent implements OnInit, OnDestroy {
           return;
         }
 
+        const encodingValue = Number(this.encoding);
+
+        if (encodingValue === 3 && (this.mensaje?.length ?? 0) > 160) {
+          this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
+          this.isSubmitting = false;
+          return;
+        }
+
+        if (encodingValue === 8 && (this.mensaje?.length ?? 0) > 170) {
+          this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
+          this.isSubmitting = false;
+          return;
+        }
+
         // Cantidad
         if (!this.cantidad || this.cantidad <= 0) {
           this.showAlert('error', 'La cantidad debe ser mayor a 0.');
@@ -785,11 +826,32 @@ export class TestingComponent implements OnInit, OnDestroy {
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
-          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
-          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
+          const res: any = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+
+          // ✅ Respuesta inmediata del Web Service (stage 1)
+          const wsResponse = res?.webservice;
+          const initialMessage = wsResponse?.message || 'Datos recibidos por el Web Service.';
+
+          this.addLog(`✅ Web Service recibió los datos: ${initialMessage}`);
+          this.addLog('🔎 Verificando estado de la simulación...');
+
+          const requestId: string | undefined = res?.requestId;
+          let finalStatus = { ok: true, message: 'Simulación enviada correctamente.' };
+
+          // Si tenemos un ID de correlación, esperar la respuesta final (stage 2)
+          if (requestId) {
+            finalStatus = await this.waitForSimulationStatus(requestId);
+          }
+
+          // Guardar la simulación como antes
           const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
           this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, store.id_simulation);
-          await this.closeDialogAndShowAlert('success', `✅ Se enviaron ${allSimulations.length} simulaciones.`);
+
+          if (finalStatus.ok) {
+            await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
+          } else {
+            await this.closeDialogAndShowAlert('error', `❌ ${finalStatus.message}`);
+          }
         } catch (error) {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);
@@ -894,11 +956,32 @@ export class TestingComponent implements OnInit, OnDestroy {
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
-          const res = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
-          this.addLog(`✅ Envío exitoso: ${allSimulations.length} simulaciones procesadas.`);
+          const res: any = await lastValueFrom(this.apiService.sendSimulation(batchPayload));
+
+          // ✅ Respuesta inmediata del Web Service (stage 1)
+          const wsResponse = res?.webservice;
+          const initialMessage = wsResponse?.message || 'Datos recibidos por el Web Service.';
+
+          this.addLog(`✅ Web Service recibió los datos: ${initialMessage}`);
+          this.addLog('🔎 Verificando estado de la simulación...');
+
+          const requestId: string | undefined = res?.requestId;
+          let finalStatus = { ok: true, message: 'Simulación enviada correctamente.' };
+
+          // Si tenemos un ID de correlación, esperar la respuesta final (stage 2)
+          if (requestId) {
+            finalStatus = await this.waitForSimulationStatus(requestId);
+          }
+
+          // Guardar la simulación como antes
           const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
           this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.` , store.id_simulation);
-          await this.closeDialogAndShowAlert('success',`✅ Se enviaron ${allSimulations.length} simulaciones.`);
+
+          if (finalStatus.ok) {
+            await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
+          } else {
+            await this.closeDialogAndShowAlert('error', `❌ ${finalStatus.message}`);
+          }
         } catch (error) {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);

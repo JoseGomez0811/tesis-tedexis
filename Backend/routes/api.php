@@ -44,7 +44,15 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/store_data', [SendSimulationController::class, 'store']);
     Route::post('/send_data', [SendSimulationController::class, 'send']);
     //--------------------------------------------------------------------------------------------------------------------------------------
+    // Route::post('/simulation-status', [SendSimulationController::class, 'simulationStatus']);
+
+    // Ruta para recibir notificaciones del Web Service Java
     Route::post('/simulation-status', [SendSimulationController::class, 'simulationStatus']);
+
+    // Ruta para que el frontend consulte el estado
+    Route::post('/check-simulation-status', [SendSimulationController::class, 'checkSimulationStatus']);
+
+    Route::post('/simulation-results', [SendSimulationController::class, 'simulationResults']);
     //-------------------------------------------------------------------------------------------------------------------------------------
 
     // --- LOGS ---
@@ -70,6 +78,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 //         'avatar' => $user->avatar,
 //     ]);
 // });
+
+// Endpoint público para recibir callbacks del Web Service Java (no requiere autenticación)
+Route::post('/simulation-status', [SendSimulationController::class, 'simulationStatus']);
 
 // Debug endpoint (mantener con auth)
 Route::middleware('auth:sanctum')->get('/debug/token', function (Request $request) {

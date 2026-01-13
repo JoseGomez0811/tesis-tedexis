@@ -10,6 +10,7 @@ use App\Models\StoreSimulation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -17,23 +18,25 @@ class SendSimulationController extends Controller
 {
     public function index()
     {
-        return response()->json(
-            StoreSimulation::orderBy('id_simulation')->get([
-                'id_simulation',
-                'id_connection',
-                'nameQueue',
-                'system_id',
-                'password',
-                'phone_number',
-                'message',
-                'number',
-                'short_code',
-                'encoding',
-                'id_db',
-                'collection',
-                'created_at',
-            ])
-        );
+        $simulations = StoreSimulation::orderBy('id_simulation')->get([
+            'id_simulation',
+            'id_connection',
+            'nameQueue',
+            'system_id',
+            'phone_number',
+            'message',
+            'number',
+            'short_code',
+            'encoding',
+            'id_db',
+            'collection',
+            'created_at',
+        ]);
+        
+        // Asegurar que la contraseña no se muestre en las respuestas JSON
+        $simulations->makeHidden(['password']);
+        
+        return response()->json($simulations);
     }
 
     public function send(Request $request)
@@ -91,10 +94,12 @@ class SendSimulationController extends Controller
             // 🚀 Si al menos una simulación fue válida
             if (collect($results)->contains(fn($r) => $r['status'] === 'ok')) {
 
+                $timestamp = Carbon::now()->toISOString();
+
                 $payload = [
                     'simulations' => $datos['simulations'],
                     'total' => count($datos['simulations']),
-                    'timestamp' => Carbon::now()->toISOString(),
+                    'timestamp' => $timestamp,
                     'type' => $datos['type'] ?? 'desconocido',
                 ];
 
@@ -113,6 +118,27 @@ class SendSimulationController extends Controller
                     ], $response->status());
                 }
                 
+                // ✅ Guardar en caché el estado inicial reportado por el Web Service (stage 1)
+                $body = $response->json() ?? [];
+
+                $statusData = [
+                    'timestamp' => $timestamp,
+                    'stage' => $body['stage'] ?? 1,
+                    'status' => $body['status'] ?? 'received',
+                    'message' => $body['message'] ?? 'Datos recibidos por el Web Service.',
+                    'total_simulations' => $payload['total'],
+                    'successful_simulations' => null,
+                    'failed_simulations' => null,
+                    'error_details' => [],
+                    'updated_at' => Carbon::now()->toISOString(),
+                ];
+
+                Cache::put(
+                    'simulation_status:' . $timestamp,
+                    $statusData,
+                    now()->addMinutes(10)
+                );
+
                 // $storeData = [
                 //     'id_connection' => $datos['simulations']['id_connection'] ?? null,
                 //     'nameQueue' => $datos['simulations']['nameQueue'] ?? null,
@@ -133,6 +159,10 @@ class SendSimulationController extends Controller
                     'message' => '✅ Simulaciones enviadas correctamente al Web Service Java.',
                     'count' => count($results),
                     'results' => $results,
+                    // ID de correlación para que el frontend pueda consultar el estado
+                    'requestId' => $timestamp,
+                    // Respuesta cruda del Web Service (stage 1)
+                    'webservice' => $body,
                 ]);
             }
 
@@ -149,6 +179,86 @@ class SendSimulationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Endpoint llamado por el Web Service Java con el resultado final (stage 2).
+     */
+    public function simulationStatus(Request $request)
+    {
+        $data = $request->all();
+        $timestamp = $data['timestamp'] ?? null;
+
+        if (!$timestamp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El campo timestamp es obligatorio para correlacionar la simulación.',
+            ], 422);
+        }
+
+        $statusData = [
+            'timestamp' => $timestamp,
+            'stage' => $data['stage'] ?? 2,
+            'status' => $data['status'] ?? 'unknown',
+            'message' => $data['message'] ?? null,
+            'total_simulations' => $data['total_simulations'] ?? null,
+            'successful_simulations' => $data['successful_simulations'] ?? null,
+            'failed_simulations' => $data['failed_simulations'] ?? null,
+            'error_details' => $data['error_details'] ?? [],
+            'updated_at' => Carbon::now()->toISOString(),
+        ];
+
+        Cache::put(
+            'simulation_status:' . $timestamp,
+            $statusData,
+            now()->addMinutes(10)
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Estado de simulación recibido correctamente.',
+        ]);
+    }
+
+    /**
+     * Endpoint para que el frontend consulte el estado de una simulación
+     * usando el requestId (timestamp) devuelto al iniciar el envío.
+     */
+    public function checkSimulationStatus(Request $request)
+    {
+        $requestId = $request->input('requestId');
+
+        if (!$requestId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El campo requestId es obligatorio.',
+            ], 422);
+        }
+
+        $status = Cache::get('simulation_status:' . $requestId);
+
+        if (!$status) {
+            return response()->json([
+                'success' => true,
+                'exists' => false,
+                'requestId' => $requestId,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'exists' => true,
+            'requestId' => $requestId,
+            'data' => $status,
+        ]);
+    }
+
+    /**
+     * Alias simple por si se usa la ruta /simulation-results.
+     */
+    public function simulationResults(Request $request)
+    {
+        return $this->checkSimulationStatus($request);
     }
 
     public function store(StoreSimulationRequest $request)
@@ -183,41 +293,5 @@ class SendSimulationController extends Controller
             ], 500);
         }
     }
-
-    //------------------------------------------------------------------------------------------------------------------------
-    public function simulationStatus(Request $request)
-    {
-        $data = $request->validate([
-            'protocol' => 'required|string',
-            'success' => 'required|boolean',
-            'message' => 'required|string',
-            'timestamp' => 'required|numeric',
-        ]);
-
-        // (Opcional) guardar log
-        try {
-            Logs::create([
-                'id_user' => 1, // Usuario del sistema
-                'id_server' => null,
-                'id_connection' => null,
-                'id_db' => null,
-                'id_simulation' => null,
-                'description' => sprintf(
-                    'Simulation Status - Protocol: %s, Success: %s, Message: %s',
-                    $data['protocol'],
-                    $data['success'] ? 'Yes' : 'No',
-                    $data['message']
-                ),
-            ]);
-        } catch (\Exception $e) {
-            // No fallar si el log no se puede guardar
-        }
-
-        // Emitir evento para frontend
-        broadcast(new \App\Events\SimulationStatusEvent($data))->toOthers();
-
-        return response()->json(['ok' => true]);
-    }
-    //------------------------------------------------------------------------------------------------------------------------------
 
 }
