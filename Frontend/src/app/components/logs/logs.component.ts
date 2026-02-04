@@ -21,6 +21,9 @@ export class LogsComponent implements OnInit {
   filtroUsuario = '';
   filtroFecha = '';
   fechaEspecifica = '';
+  anioEspecifico = '';
+  mesEspecifico = '';
+  anioMesEspecifico = '';
 
   googleUserData = {
     fullName: '',
@@ -87,6 +90,14 @@ export class LogsComponent implements OnInit {
     this.apiService.getLogs().subscribe({
       next: (res: any) => {
         this.logs = Array.isArray(res) ? res : res.data ?? [];
+        
+        // Ordenar por fecha descendente (más reciente primero)
+        this.logs.sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dateB - dateA; // Descendente
+        });
+        
         this.filteredLogs = [...this.logs];
         console.log('📊 Logs cargados:', this.logs);
       },
@@ -107,6 +118,7 @@ export class LogsComponent implements OnInit {
 
   /** 🔹 Filtrar logs por usuario y fecha */
   applyFilters() {
+    
     this.filteredLogs = this.logs.filter(log => {
       const selectedUser = this.userList.find(u => u.id === log.id_user);
       const matchUsuario = this.filtroUsuario ? selectedUser?.name === this.filtroUsuario : true;
@@ -143,9 +155,49 @@ export class LogsComponent implements OnInit {
         console.log('  - Fecha personalizada:', customDateNormalized.toLocaleDateString());
         console.log('  - Fecha log:', logDateNormalized.toLocaleDateString());
         console.log('  - ¿Coinciden?:', matchFecha);
+      } else if (this.filtroFecha === 'año_especifico') {
+        // Filtrar por año específico
+        if (this.anioEspecifico && this.anioEspecifico.toString().trim() !== '') {
+          const anioSeleccionado = parseInt(this.anioEspecifico.toString());
+          if (!isNaN(anioSeleccionado) && anioSeleccionado >= 2000 && anioSeleccionado <= 2100) {
+            matchFecha = logDate.getFullYear() === anioSeleccionado;
+          }
+        }
+      } else if (this.filtroFecha === 'mes_año_especifico') {
+        // Filtrar por mes y año específico
+        if (this.mesEspecifico && this.anioMesEspecifico && 
+            this.mesEspecifico.toString().trim() !== '' && 
+            this.anioMesEspecifico.toString().trim() !== '') {
+          const mesSeleccionado = parseInt(this.mesEspecifico.toString()) - 1; // Los meses en JS van de 0-11
+          const anioSeleccionado = parseInt(this.anioMesEspecifico.toString());
+          if (!isNaN(mesSeleccionado) && !isNaN(anioSeleccionado) && 
+              mesSeleccionado >= 0 && mesSeleccionado <= 11 &&
+              anioSeleccionado >= 2000 && anioSeleccionado <= 2100) {
+            matchFecha = logDate.getMonth() === mesSeleccionado && logDate.getFullYear() === anioSeleccionado;
+          }
+        }
       }
 
       return matchUsuario && matchFecha;
+    });
+    
+    // Limpiar campos no utilizados según el filtro seleccionado (después de aplicar el filtro)
+    if (this.filtroFecha !== 'personalizada') {
+      this.fechaEspecifica = '';
+    }
+    if (this.filtroFecha !== 'año_especifico') {
+      this.anioEspecifico = '';
+    }
+    if (this.filtroFecha !== 'mes_año_especifico') {
+      this.mesEspecifico = '';
+      this.anioMesEspecifico = '';
+    }
+    
+    // Ordenar por fecha descendente (más reciente primero)
+    this.filteredLogs.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA; // Descendente
     });
   }
 

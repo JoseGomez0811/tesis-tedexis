@@ -197,7 +197,10 @@ export class TestingComponent implements OnInit, OnDestroy {
             );
 
             if (!isSuccess && Array.isArray(data.error_details) && data.error_details.length > 0) {
-              this.addLog(`❌ Detalles: ${data.error_details.join(' | ')}`);
+              this.addLog('❌ Detalles:');
+              data.error_details.forEach((error: string) => {
+                this.addLog(`   • ${error}`);
+              });
             }
 
             return { ok: isSuccess, message: baseMessage };
@@ -545,17 +548,9 @@ export class TestingComponent implements OnInit, OnDestroy {
   }
 
   onEncodingChange() {
-    const encodingValue = Number(this.encoding);
-
-    if (encodingValue === 0) {
-      this.mensajeMaxLength = null; // sin límite
-    } else if (encodingValue === 3) {
-      this.mensajeMaxLength = 160;
-    } else if (encodingValue === 8) {
-      this.mensajeMaxLength = 170;
-    } else {
-      this.mensajeMaxLength = null;
-    }
+    // Ya no aplicamos límites de longitud en el frontend.
+    // La validación de cantidad de caracteres ahora la maneja el Web Service.
+    this.mensajeMaxLength = null;
   }
 
   async onSubmit(event: Event, formulario: NgForm) {
@@ -661,20 +656,6 @@ export class TestingComponent implements OnInit, OnDestroy {
 
         if (!this.mensaje || this.mensaje.trim().length === 0) {
           this.showAlert('error', 'El mensaje es obligatorio.');
-          this.isSubmitting = false;
-          return;
-        }
-
-        const encodingValue = Number(this.encoding);
-
-        if (encodingValue === 3 && (this.mensaje?.length ?? 0) > 160) {
-          this.showAlert('error', 'El mensaje no puede superar los 160 caracteres con encoding 3.');
-          this.isSubmitting = false;
-          return;
-        }
-
-        if (encodingValue === 8 && (this.mensaje?.length ?? 0) > 170) {
-          this.showAlert('error', 'El mensaje no puede superar los 170 caracteres con encoding 8.');
           this.isSubmitting = false;
           return;
         }
@@ -847,6 +828,16 @@ export class TestingComponent implements OnInit, OnDestroy {
           const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
           this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, store.id_simulation);
 
+          // Actualizar el resultado de la simulación
+          if (store.id_simulation) {
+            try {
+              const result = finalStatus.ok ? 'Simulación enviada con éxito' : 'Error al enviar la simulación';
+              await lastValueFrom(this.apiService.updateSimulationResult(store.id_simulation, result));
+            } catch (err) {
+              console.error('❌ Error actualizando resultado de simulación:', err);
+            }
+          }
+
           if (finalStatus.ok) {
             await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
           } else {
@@ -855,6 +846,18 @@ export class TestingComponent implements OnInit, OnDestroy {
         } catch (error) {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);
+          
+          // Si se guardó la simulación antes del error, actualizar el resultado
+          try {
+            const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+            if (store.id_simulation) {
+              await lastValueFrom(this.apiService.updateSimulationResult(store.id_simulation, 'Error al enviar la simulación'));
+            }
+          } catch (storeErr) {
+            // Si no se pudo guardar o actualizar, no hacer nada
+            console.error('❌ Error guardando/actualizando simulación:', storeErr);
+          }
+          
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
           this.isSubmitting = false; // Resetear en caso de error
         }
@@ -977,6 +980,16 @@ export class TestingComponent implements OnInit, OnDestroy {
           const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
           this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.` , store.id_simulation);
 
+          // Actualizar el resultado de la simulación
+          if (store.id_simulation) {
+            try {
+              const result = finalStatus.ok ? 'Simulación enviada con éxito' : 'Error al enviar la simulación';
+              await lastValueFrom(this.apiService.updateSimulationResult(store.id_simulation, result));
+            } catch (err) {
+              console.error('❌ Error actualizando resultado de simulación:', err);
+            }
+          }
+
           if (finalStatus.ok) {
             await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
           } else {
@@ -985,6 +998,18 @@ export class TestingComponent implements OnInit, OnDestroy {
         } catch (error) {
           console.error('❌ Error enviando simulaciones:', error);
           this.addLog(`❌ Error: ${error}`);
+          
+          // Si se guardó la simulación antes del error, actualizar el resultado
+          try {
+            const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+            if (store.id_simulation) {
+              await lastValueFrom(this.apiService.updateSimulationResult(store.id_simulation, 'Error al enviar la simulación'));
+            }
+          } catch (storeErr) {
+            // Si no se pudo guardar o actualizar, no hacer nada
+            console.error('❌ Error guardando/actualizando simulación:', storeErr);
+          }
+          
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
           this.isSubmitting = false; // Resetear en caso de error
         }

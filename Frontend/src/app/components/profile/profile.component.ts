@@ -32,6 +32,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   filtroServidor: string = '';
   filtroFecha: string = '';
   fechaEspecifica: string = '';
+  anioEspecifico: string = '';
+  mesEspecifico: string = '';
+  anioMesEspecifico: string = '';
 
   googleUserData = {
     fullName: '',
@@ -159,7 +162,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
             );
 
             if (!isSuccess && Array.isArray(data.error_details) && data.error_details.length > 0) {
-              this.addLog(`❌ Detalles: ${data.error_details.join(' | ')}`);
+              this.addLog('❌ Detalles:');
+              data.error_details.forEach((error: string) => {
+                this.addLog(`   • ${error}`);
+              });
             }
 
             return { ok: isSuccess, message: baseMessage };
@@ -266,6 +272,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
               sim => userSimulationIds.includes(sim.id_simulation)
             );
 
+            // Ordenar por fecha descendente (más reciente primero)
+            this.userSimulations.sort((a, b) => {
+              const dateA = new Date(a.created_at).getTime();
+              const dateB = new Date(b.created_at).getTime();
+              return dateB - dateA; // Descendente
+            });
+
             console.log(`✅ Simulaciones del usuario: ${this.userSimulations.length} de ${this.simulations.length} totales`);
 
             // Guardar simulaciones filtradas - USAR userSimulations
@@ -331,6 +344,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     console.log('Filtro Servidor:', this.filtroServidor);
     console.log('Filtro Fecha:', this.filtroFecha);
     console.log('Fecha Específica:', this.fechaEspecifica);
+    console.log('Año Específico:', this.anioEspecifico);
+    console.log('Mes Específico:', this.mesEspecifico);
+    console.log('Año Mes Específico:', this.anioMesEspecifico);
+    
+    // Limpiar campos no utilizados según el filtro seleccionado (solo si cambió el tipo de filtro)
+    // Esto se hace después de aplicar el filtro para no perder los valores
     
     // SIEMPRE filtrar desde userSimulations, no desde simulations
     this.filteredSimulations = this.userSimulations.filter(sim => {
@@ -369,9 +388,49 @@ export class ProfileComponent implements OnInit, OnDestroy {
         console.log('  - Fecha personalizada:', customDateNormalized.toLocaleDateString());
         console.log('  - Fecha simulación:', simDateNormalized.toLocaleDateString());
         console.log('  - ¿Coinciden?:', matchFecha);
+      } else if (this.filtroFecha === 'año_especifico') {
+        // Filtrar por año específico
+        if (this.anioEspecifico && this.anioEspecifico.toString().trim() !== '') {
+          const anioSeleccionado = parseInt(this.anioEspecifico.toString());
+          if (!isNaN(anioSeleccionado) && anioSeleccionado >= 2000 && anioSeleccionado <= 2100) {
+            matchFecha = simDate.getFullYear() === anioSeleccionado;
+          }
+        }
+      } else if (this.filtroFecha === 'mes_año_especifico') {
+        // Filtrar por mes y año específico
+        if (this.mesEspecifico && this.anioMesEspecifico && 
+            this.mesEspecifico.toString().trim() !== '' && 
+            this.anioMesEspecifico.toString().trim() !== '') {
+          const mesSeleccionado = parseInt(this.mesEspecifico.toString()) - 1; // Los meses en JS van de 0-11
+          const anioSeleccionado = parseInt(this.anioMesEspecifico.toString());
+          if (!isNaN(mesSeleccionado) && !isNaN(anioSeleccionado) && 
+              mesSeleccionado >= 0 && mesSeleccionado <= 11 &&
+              anioSeleccionado >= 2000 && anioSeleccionado <= 2100) {
+            matchFecha = simDate.getMonth() === mesSeleccionado && simDate.getFullYear() === anioSeleccionado;
+          }
+        }
       }
 
       return matchServidor && matchFecha;
+    });
+    
+    // Limpiar campos no utilizados según el filtro seleccionado (después de aplicar el filtro)
+    if (this.filtroFecha !== 'personalizada') {
+      this.fechaEspecifica = '';
+    }
+    if (this.filtroFecha !== 'año_especifico') {
+      this.anioEspecifico = '';
+    }
+    if (this.filtroFecha !== 'mes_año_especifico') {
+      this.mesEspecifico = '';
+      this.anioMesEspecifico = '';
+    }
+    
+    // Ordenar por fecha descendente (más reciente primero)
+    this.filteredSimulations.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA; // Descendente
     });
     
     console.log(`✅ Resultados filtrados: ${this.filteredSimulations.length} de ${this.userSimulations.length}`);
@@ -434,7 +493,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     console.log('📞 Números de teléfono procesados:', this.phoneNumbers);
   }
 
-  private logSimulationAction(action: string, id: string): void {
+  private logSimulationAction(action: string, id: string | null): void {
     const currentUser = this.authService.getUser();
     if (!currentUser) {
       console.warn('⚠️ No hay usuario autenticado para registrar log');
@@ -552,6 +611,33 @@ export class ProfileComponent implements OnInit, OnDestroy {
           type: 'nuevo',
         };
 
+        // Crear un nuevo registro de simulación antes de enviar
+        const storeData: any = {
+          id_connection: this.selectedSimulation.id_connection,
+          nameQueue: this.selectedSimulation.nameQueue || this.selectedSimulation.name_queue || null,
+          system_id: this.selectedSimulation.system_id || this.selectedSimulation.systemId || '',
+          password: this.selectedSimulation.password || '',
+          phone_number: String(this.phoneNumbers.join(',')),
+          message: this.selectedSimulation.message || this.selectedSimulation.msg || '',
+          number: Number(this.selectedSimulation.number) || 1,
+          short_code: Number(this.selectedSimulation.short_code ?? this.selectedSimulation.shortCode ?? 0),
+          encoding: this.selectedSimulation.encoding ?? '0',
+          id_db: null,
+          collection: null,
+        };
+
+        let newSimulationId: number | null = null;
+        try {
+          const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+          newSimulationId = store?.id_simulation ?? store?.data?.id_simulation ?? null;
+          if (newSimulationId) {
+            this.addLog(`💾 Nueva simulación creada con ID: ${newSimulationId}`);
+          }
+        } catch (storeErr) {
+          console.error('❌ Error creando nuevo registro de simulación:', storeErr);
+          this.addLog(`⚠️ No se pudo crear el registro de simulación, pero se continuará con el envío.`);
+        }
+
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
@@ -572,10 +658,22 @@ export class ProfileComponent implements OnInit, OnDestroy {
             finalStatus = await this.waitForSimulationStatus(requestId);
           }
 
-          // Registrar log (usar id_simulation si está disponible)
-          const id_simulation = this.selectedSimulation.id_simulation ?? null;
-          
-          this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, id_simulation);
+          // Registrar log usando el nuevo ID de simulación
+          this.logSimulationAction(`El usuario {user} ha enviado ${allSimulations.length} simulaciones nuevas.`, newSimulationId ? newSimulationId.toString() : null);
+
+          // Actualizar el resultado de la nueva simulación
+          if (newSimulationId) {
+            try {
+              const result = finalStatus.ok ? 'Simulación enviada con éxito' : 'Error al enviar la simulación';
+              await lastValueFrom(this.apiService.updateSimulationResult(newSimulationId, result));
+              this.addLog(`✅ Resultado actualizado para la nueva simulación: ${result}`);
+            } catch (err) {
+              console.error('❌ Error actualizando resultado de simulación:', err);
+            }
+          }
+
+          // Recargar las simulaciones para mostrar la nueva
+          this.loadData();
 
           if (finalStatus.ok) {
             await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
@@ -585,6 +683,20 @@ export class ProfileComponent implements OnInit, OnDestroy {
         } catch (error) {
           console.error('❌ Error enviando simulaciones (nuevo):', error);
           this.addLog(`❌ Error: ${error}`);
+          
+          // Actualizar el resultado de la nueva simulación en caso de error
+          if (newSimulationId) {
+            try {
+              await lastValueFrom(this.apiService.updateSimulationResult(newSimulationId, 'Error al enviar la simulación'));
+              this.addLog(`❌ Resultado actualizado para la nueva simulación: Error al enviar la simulación`);
+            } catch (err) {
+              console.error('❌ Error actualizando resultado de simulación:', err);
+            }
+          }
+          
+          // Recargar las simulaciones
+          this.loadData();
+          
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
         }
 
@@ -633,6 +745,33 @@ export class ProfileComponent implements OnInit, OnDestroy {
           type: 'reuso',
         };
 
+        // Crear un nuevo registro de simulación antes de enviar
+        const storeData: any = {
+          id_connection: this.selectedSimulation.id_connection,
+          nameQueue: this.selectedSimulation.nameQueue || this.selectedSimulation.name_queue || null,
+          system_id: this.selectedSimulation.system_id || this.selectedSimulation.systemId || '',
+          password: this.selectedSimulation.password || '',
+          phone_number: 'N/A',
+          message: 'N/A',
+          number: count,
+          short_code: 0,
+          encoding: '0',
+          id_db: this.selectedSimulation.id_db || null,
+          collection: this.selectedSimulation.collection || null,
+        };
+
+        let newSimulationId: number | null = null;
+        try {
+          const store = await lastValueFrom(this.apiService.storeSimulation(storeData));
+          newSimulationId = store?.id_simulation ?? store?.data?.id_simulation ?? null;
+          if (newSimulationId) {
+            this.addLog(`💾 Nueva simulación creada con ID: ${newSimulationId}`);
+          }
+        } catch (storeErr) {
+          console.error('❌ Error creando nuevo registro de simulación:', storeErr);
+          this.addLog(`⚠️ No se pudo crear el registro de simulación, pero se continuará con el envío.`);
+        }
+
         this.addLog(`🚀 Enviando ${allSimulations.length} simulaciones...`);
 
         try {
@@ -653,10 +792,22 @@ export class ProfileComponent implements OnInit, OnDestroy {
             finalStatus = await this.waitForSimulationStatus(requestId);
           }
 
-          // Registrar log (usar id_simulation si está disponible)
-          const id_simulation = this.selectedSimulation.id_simulation ?? null;
-          
-          this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.`, id_simulation);
+          // Registrar log usando el nuevo ID de simulación
+          this.logSimulationAction(`El usuario {user} ha reutilizado ${allSimulations.length} simulaciones.`, newSimulationId ? newSimulationId.toString() : null);
+
+          // Actualizar el resultado de la nueva simulación
+          if (newSimulationId) {
+            try {
+              const result = finalStatus.ok ? 'Simulación enviada con éxito' : 'Error al enviar la simulación';
+              await lastValueFrom(this.apiService.updateSimulationResult(newSimulationId, result));
+              this.addLog(`✅ Resultado actualizado para la nueva simulación: ${result}`);
+            } catch (err) {
+              console.error('❌ Error actualizando resultado de simulación:', err);
+            }
+          }
+
+          // Recargar las simulaciones para mostrar la nueva
+          this.loadData();
 
           if (finalStatus.ok) {
             await this.closeDialogAndShowAlert('success', `✅ ${finalStatus.message}`);
@@ -666,6 +817,20 @@ export class ProfileComponent implements OnInit, OnDestroy {
         } catch (err) {
           console.error('❌ Error enviando simulaciones (reuso):', err);
           this.addLog(`❌ Error: ${err}`);
+          
+          // Actualizar el resultado de la nueva simulación en caso de error
+          if (newSimulationId) {
+            try {
+              await lastValueFrom(this.apiService.updateSimulationResult(newSimulationId, 'Error al enviar la simulación'));
+              this.addLog(`❌ Resultado actualizado para la nueva simulación: Error al enviar la simulación`);
+            } catch (updateErr) {
+              console.error('❌ Error actualizando resultado de simulación:', updateErr);
+            }
+          }
+          
+          // Recargar las simulaciones
+          this.loadData();
+          
           await this.closeDialogAndShowAlert('error', 'Error enviando simulaciones.');
         }
       }

@@ -11,7 +11,7 @@ use Illuminate\Http\Client\ConnectionException;
 class LogsController extends Controller{
     public function index()
     {
-        $logs = Logs::orderBy('id_logs')->get([
+        $logs = Logs::orderBy('created_at', 'desc')->get([
             'id_logs',
             'id_user',
             'id_server',

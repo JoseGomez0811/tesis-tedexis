@@ -420,11 +420,11 @@
     (click)="$event.target === $event.currentTarget && !isSubmitting && closeSendingDialog()"
   >
     <div 
-      class="bg-white w-10/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 max-h-[70vh] flex flex-col relative"
+      class="bg-white w-10/12 md:w-2/3 lg:w-1/2 rounded-2xl shadow-xl p-4 md:p-6 h-[500px] flex flex-col relative"
       (click)="$event.stopPropagation()"
     >
       <!-- Header -->
-      <div class="flex items-start justify-between">
+      <div class="flex items-start justify-between flex-shrink-0">
           <div class="flex items-center gap-3">
             <svg class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -437,7 +437,7 @@
       <!-- Logs -->
       <div
         #sendingLogContainer
-        class="mt-4 overflow-y-auto flex-1 space-y-2 text-sm text-gray-700 pr-2"
+        class="mt-4 overflow-y-auto flex-1 space-y-2 text-sm text-gray-700 pr-2 min-h-0"
         style="scroll-behavior: smooth;"
       >
         <div *ngFor="let log of sendingLogs; let i = index; trackBy: trackByLogIndex " 
@@ -454,7 +454,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="mt-4 flex items-center justify-end gap-2">
+      <div class="mt-4 flex items-center justify-end gap-2 flex-shrink-0">
         <button
           *ngIf="!isSubmitting"
           (click)="closeSendingDialog()"

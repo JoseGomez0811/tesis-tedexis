@@ -18,7 +18,7 @@ class SendSimulationController extends Controller
 {
     public function index()
     {
-        $simulations = StoreSimulation::orderBy('id_simulation')->get([
+        $simulations = StoreSimulation::orderBy('created_at', 'desc')->get([
             'id_simulation',
             'id_connection',
             'nameQueue',
@@ -30,6 +30,7 @@ class SendSimulationController extends Controller
             'encoding',
             'id_db',
             'collection',
+            'result',
             'created_at',
         ]);
         
@@ -279,6 +280,48 @@ class SendSimulationController extends Controller
                 'id_simulation' => $simulation->id_simulation
             ], 201);
 
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $e->errors(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error interno del servidor',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualizar el resultado de una simulación
+     */
+    public function updateResult(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'result' => 'required|string|in:Simulación enviada con éxito,Error al enviar la simulación',
+            ]);
+
+            $simulation = StoreSimulation::find($id);
+
+            if (!$simulation) {
+                return response()->json([
+                    'message' => 'Simulación no encontrada.',
+                    'success' => false,
+                ], 404);
+            }
+
+            $simulation->result = $request->result;
+            $simulation->save();
+
+            return response()->json([
+                'message' => 'Resultado de simulación actualizado exitosamente.',
+                'success' => true,
+                'data' => $simulation,
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

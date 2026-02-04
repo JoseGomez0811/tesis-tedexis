@@ -22,6 +22,7 @@ class StoreSimulation extends Model
         'encoding',
         'id_db',
         'collection',
+        'result',
     ];
 
     protected $hidden = [

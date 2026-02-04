@@ -4,17 +4,11 @@ import { AuthService } from '../../../services/auth.service';
 
 @Component({ 
   selector: 'app-auth-callback',
-  template: `
-    <div style="padding: 20px; font-family: monospace;">
-      <h2>🔍 Debug Auth Callback</h2>
-      <pre>{{ debugInfo }}</pre>
-    </div>
-  `,
+  template: ``,
   standalone: true,
   imports: []
 })
 export class AuthCallbackComponent implements OnInit {
-  debugInfo = 'Procesando...';
 
   constructor(
     private router: Router,
@@ -36,18 +30,6 @@ export class AuthCallbackComponent implements OnInit {
     const userJson = params.get('user');
     const error = params.get('error');
     const status = params.get('status');
-
-    this.debugInfo = `
-URL: ${window.location.href}
-Hash: ${window.location.hash}
-Fragment: ${fragment}
-
-Params extraídos:
-- token: ${token ? token.substring(0, 30) + '...' : 'NO'}
-- user: ${userJson ? 'SÍ' : 'NO'}
-- error: ${error || 'NO'}
-- status: ${status || 'NO'}
-    `;
 
     console.log('📦 Params extraídos:', {
       token: token?.substring(0, 30),

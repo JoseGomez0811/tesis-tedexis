@@ -356,4 +356,17 @@ getDocument(dbId: string, collection: string, docId: string, forceRefresh = fals
     return this.http.post(`${this.baseUrl}/check-simulation-status`, { requestId });
   }
 
+  /**
+   * Actualiza el resultado de una simulación
+   */
+  updateSimulationResult(id: number, result: string): Observable<any> {
+    const url = `${this.baseUrl}/simulations/${id}/result`;
+    const key = this.createRequestKey('PUT', url, { result });
+    return this.runWithInflightControl(key, () =>
+      this.http.put(url, { result }, this.httpOptionsWithCredentials).pipe(
+        tap(() => this.invalidateCache('simulation'))
+      )
+    );
+  }
+
 }
